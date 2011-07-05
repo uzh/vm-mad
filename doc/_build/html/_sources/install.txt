@@ -1,0 +1,167 @@
+++++++++++++++++++++++++++
+ Installation of GC3Utils
+++++++++++++++++++++++++++
+
+:Author:   Riccardo Murri <riccardo.murri@gmail.com>
+:Date:     2010-10-06
+:Revision: $Revision$
+
+
+.. This file follows reStructuredText markup syntax; see
+   http://docutils.sf.net/rst.html for more information
+
+
+Installation
+============
+
+These instructions show how to install VM-MAD from the source
+repository into a separate python environment (called `virtualenv`_).
+Installation into a virtualenv has two distinct advantages:
+
+  * All code is confined in a single directory, 
+    and can thus be easily replaced/removed.
+
+  * Better dependency handling: additional Python packages 
+    that VM-MAD depends upon can be installed even if they 
+    conflict with system-level packages.
+
+0. Install software prerequisites: 
+   
+   * On Debian/Ubuntu, install packages: ``subversion``,
+     ``python-dev``, ``python-profiler`` and the C/C++ compiler::
+     
+       apt-get install subversion python-dev python-profiler gcc g++
+
+   * On CentOS5, install packages ``subversion`` and ``python-devel``
+     and the C/C++ compiler::
+
+       yum install subversion python-devel gcc gcc-c++
+
+   * On other Linux distributions, you will need to install:
+
+     - the ``svn`` command (from the SubVersion_ VCS)
+     - Python development headers and libraries
+       (for installing extension libraries written in C/C++)
+     - the Python package ``pstats`` (it's part of the Python 
+       standard library, but sometimes it needs separate installation)
+     - a C/C++ compiler (this is usually installed by default).
+
+
+1. Choose a directory where the VM-MAD software will be installed;
+   any directory that's writable by your Linux account will be ok.
+
+   If you are installing system-wide as ``root``, we suggest you
+   install VM-MAD into ``/opt/vm-mad``.
+
+   If you are installing as a normal user, we suggest you install
+   VM-MAD into ``$HOME/vm-mad``.
+
+
+2. If it's not already installed, get the `virtualenv`_ Python package
+   and install it::
+
+      wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.5.1.tar.gz
+      tar -xzf virtualenv-1.5.1.tar.gz && rm virtualenv-1.5.1.tar.gz
+      cd virtualenv-1.5.1/
+ 
+    If you are installing as `root`, the following command is all you
+    need:
+
+      python setup.py install
+
+    If instead you are installing as a normal, unprivileged user,
+    things get more complicated::
+
+      export PYTHONPATH=$HOME/lib64/python:$HOME/lib/python:$PYTHONPATH
+      export PATH=$PATH:$HOME/bin
+      mkdir -p $HOME/lib/python
+      python setup.py install --home $HOME
+
+    (You will also need to add the two `export` lines above to the
+    `$HOME/.bashrc` file -if using the `bash` shell- or to the
+    `$HOME/.cshrc` file -if using the `tcsh` shell.)
+
+    In any case, once `virtualenv`_ has been installed, you can exit
+    its directory and remove it::
+   
+      cd ..
+      rm -rf virtualenv-1.5.1
+
+
+3. Create a virtualenv to host the ``vm-mad`` installation at the
+   directory you chose in Step 1.::
+
+       virtualenv $HOME/vm-mad # use '/opt/vm-mad' if installing as root
+       cd $HOME/vm-mad/
+       source bin/activate
+
+
+4. Check-out the ``vm-mad`` files in a ``src/`` directory::
+     
+       svn co http://vm-mad.googlecode.com/svn/trunk/vm-mad src
+   
+  
+5. Install the ``vm-mad`` in "develop" mode, so any modification
+   pulled from subversion is immediately reflected in the running environment::
+
+       cd src/
+       env CC=gcc ./setup.py develop 
+       cd .. # back into the `vm-mad` directory
+
+   This will place all the VM-MAD command into the ``vm-mad/bin/``
+   directory.
+
+
+Upgrade
+=======
+
+These instructions show how to upgrade the VM-MAD scripts to the
+latest version found in the GC3 svn repository.
+
+1. `cd` to the directory containing the VM-MAD virtualenv;
+   assuming it's named ``vm-mad`` as in the above installation
+   instructions, you can issue the commands::
+
+     cd $HOME/vm-mad # use '/opt/vm-mad' if root
+
+2. Activate the virtualenv ::
+
+     source bin/activate
+
+3. Upgrade the `vm-mad` source and run the `setup.py` script again::
+
+     cd src
+     svn up
+     env CC=gcc ./setup.py develop
+
+
+HTML Documentation
+==================
+
+HTML documentation for the VMlib programming interface can be
+read online at:
+     
+  http://vm-mad.googlecode.com/svn/trunk/doc/html/index.html
+
+You can also generate a local copy from the sources::
+
+  cd $HOME/vm-mad # use '/opt/vm-mad' if root
+  cd src/docs
+  make html
+
+Note that you need the Python package `Sphinx <http://sphinx.pocoo.org>`
+(at least versdion 1.0) in order to build the documentation locally.
+
+
+.. References
+
+.. _subversion: http://subversion.tigris.org/
+.. _sphinx: http://sphinx.pocoo.org/
+.. _virtualenv: http://pypi.python.org/pypi/virtualenv/1.5.1
+
+
+.. (for Emacs only)
+..
+  Local variables:
+  mode: rst
+  End:

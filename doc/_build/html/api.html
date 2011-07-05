@@ -1,0 +1,316 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>VMlib modules &mdash; VM-MAD vdevelopment (SVN $Revision$) documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     'development (SVN $Revision$)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="VM-MAD vdevelopment (SVN $Revision$) documentation" href="index.html" />
+    <link rel="prev" title="Installation of GC3Utils" href="install.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Installation of GC3Utils"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="vmlib-modules">
+<h1>VMlib modules<a class="headerlink" href="#vmlib-modules" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-vmlibs">
+<span id="vmlibs"></span><h2><cite>vmlibs</cite><a class="headerlink" href="#module-vmlibs" title="Permalink to this headline">¶</a></h2>
+<p>Basic functions to operate on Virtual Machines in a set of clouds.</p>
+<p>In more detail, <cite>vmlibs</cite> provides a functional interface to:</p>
+<ul class="simple">
+<li>Start/check status/stop a VM in a cloud infrastructure.</li>
+<li>List VM images and their associated metadata.</li>
+<li>List available machine types/sizes.</li>
+</ul>
+<dl class="class">
+<dt id="vmlibs.MetadataQuery">
+<em class="property">class </em><tt class="descclassname">vmlibs.</tt><tt class="descname">MetadataQuery</tt><big>(</big><em>endpoint</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#MetadataQuery"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.MetadataQuery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform queries to a VM-MAD metadata server.</p>
+<dl class="method">
+<dt id="vmlibs.MetadataQuery.get_image_info">
+<tt class="descname">get_image_info</tt><big>(</big><em>vmid</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#MetadataQuery.get_image_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.MetadataQuery.get_image_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Query the metadata server and return all the metadata available
+for the image identified by <cite>vmid</cite>.</p>
+<p>The return value is a Python dictionary; both keys and values are
+string types (or subclasses thereof).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="vmlibs.MetadataQuery.search_image">
+<tt class="descname">search_image</tt><big>(</big><em>tags</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#MetadataQuery.search_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.MetadataQuery.search_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a set of tags, return the set of VM image IDs that have all
+the given tags.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="vmlibs.VMControl">
+<em class="property">class </em><tt class="descclassname">vmlibs.</tt><tt class="descname">VMControl</tt><a class="reference internal" href="_modules/vmlibs.html#VMControl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Control the lifecycle of a VM.</p>
+<dl class="method">
+<dt id="vmlibs.VMControl.get_info">
+<tt class="descname">get_info</tt><big>(</big><em>hid</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#VMControl.get_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl.get_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return information on the VM instance identified by <cite>hid</cite>.</p>
+<p>The return value is a named tuple object, conforming to the
+following specification:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="12%" />
+<col width="71%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">attribute</th>
+<th class="head">type</th>
+<th class="head">meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>public_ip</td>
+<td>str</td>
+<td>public IP address in dot quad notation</td>
+</tr>
+<tr><td>private_ip</td>
+<td>str</td>
+<td>private IP address in dot quad notation</td>
+</tr>
+<tr><td>vmid</td>
+<td>str</td>
+<td>the VM image ID used to create the image</td>
+</tr>
+<tr><td>mtid</td>
+<td>str</td>
+<td>the machine type ID used to create the image</td>
+</tr>
+<tr><td>cloud</td>
+<td>str</td>
+<td>cloud identifier</td>
+</tr>
+<tr><td>started_at</td>
+<td>datetime</td>
+<td>when the request to start the machine was issued</td>
+</tr>
+<tr><td>up_at</td>
+<td>datetime</td>
+<td>when the machine was detected up and running</td>
+</tr>
+<tr><td>running_time</td>
+<td>duration</td>
+<td>total running time (in seconds)</td>
+</tr>
+<tr><td>bill</td>
+<td>float</td>
+<td>total cost to be billed by cloud provider</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="vmlibs.VMControl.get_machtype_info">
+<tt class="descname">get_machtype_info</tt><big>(</big><em>mtid</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#VMControl.get_machtype_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl.get_machtype_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return complete information on the machine type identified by
+<cite>mtid</cite>.</p>
+<p>The return value is a named tuple object, with the following fields:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="10%" />
+<col width="71%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">attribute</th>
+<th class="head">type</th>
+<th class="head">meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>id</td>
+<td>str</td>
+<td>a copy of <cite>mtid</cite></td>
+</tr>
+<tr><td>ram</td>
+<td>int</td>
+<td>amount of RAM, in MB</td>
+</tr>
+<tr><td>slots</td>
+<td>int</td>
+<td>number of CPU cores available</td>
+</tr>
+<tr><td>bandwidth</td>
+<td>int</td>
+<td>max bandwidth, in MB/s</td>
+</tr>
+<tr><td>cloud</td>
+<td>str</td>
+<td>identifier of the Cloud provider</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="vmlibs.VMControl.get_status">
+<tt class="descname">get_status</tt><big>(</big><em>hid</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#VMControl.get_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl.get_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the status of the VM instance identified by <cite>hid</cite>.</p>
+<p>The returned status is one of the following strings:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="9%" />
+<col width="91%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">status</th>
+<th class="head">meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>WAITING</td>
+<td>A request to start the VM has been sent to the Cloud server, but the VM is not ready yet.</td>
+</tr>
+<tr><td>UP</td>
+<td>The machine is up and running, and connected to the network.</td>
+</tr>
+<tr><td>STOPPED</td>
+<td>The remote VM has been frozen, but normal execution can be resumed.</td>
+</tr>
+<tr><td>DOWN</td>
+<td>The VM has been stopped and cannot be restarted/resumed.</td>
+</tr>
+</tbody>
+</table>
+<p>Raise <cite>ValueError</cite> if <cite>hid</cite> is not a valid &#8220;VM handle&#8221;
+as returned by the <tt class="xref py py-meth docutils literal"><span class="pre">self.start()</span></tt> method.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="vmlibs.VMControl.import_configuration">
+<tt class="descname">import_configuration</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#VMControl.import_configuration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl.import_configuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read <cite>filename</cite> and use it to configure this <cite>VMControl</cite> instance.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="vmlibs.VMControl.list_available_machtypes">
+<tt class="descname">list_available_machtypes</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/vmlibs.html#VMControl.list_available_machtypes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl.list_available_machtypes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Query cloud servers and return a list of machine types available.</p>
+<p>The return value is a list of &#8220;machine type IDs&#8221;;
+you should run <cite>get_machtype_info</cite> to translate the IDs into
+information that can be programmatically consumed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="vmlibs.VMControl.start">
+<tt class="descname">start</tt><big>(</big><em>vmid</em>, <em>mtid</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#VMControl.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start a VM given a &#8220;VM image ID&#8221; <cite>vmid</cite> and a &#8220;machine type ID&#8221; <cite>mtid</cite>.
+Return a unique <cite>hid</cite> (&#8220;VM handle id&#8221;) that can be used to operate on
+the started instance.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="vmlibs.VMControl.stop">
+<tt class="descname">stop</tt><big>(</big><em>hid</em><big>)</big><a class="reference internal" href="_modules/vmlibs.html#VMControl.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#vmlibs.VMControl.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the VM identified by <cite>hid</cite>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">VMlib modules</a><ul>
+<li><a class="reference internal" href="#module-vmlibs"><cite>vmlibs</cite></a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="install.html"
+                        title="previous chapter">Installation of GC3Utils</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/api.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Installation of GC3Utils"
+             >previous</a> |</li>
+        <li><a href="index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Simon Barkow, Peter Kunszt, Sergio Maffioletti, Riccardo Murri, Christian Panse.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+    </div>
+  </body>
+</html>

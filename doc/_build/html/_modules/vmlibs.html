@@ -1,0 +1,263 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>vmlibs &mdash; VM-MAD vdevelopment (SVN $Revision$) documentation</title>
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     'development (SVN $Revision$)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="VM-MAD vdevelopment (SVN $Revision$) documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for vmlibs</h1><div class="highlight"><pre>
+<span class="c">#! /usr/bin/env python</span>
+<span class="c">#</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Basic functions to operate on Virtual Machines in a set of clouds.</span>
+
+<span class="sd">In more detail, `vmlibs` provides a functional interface to:</span>
+
+<span class="sd">* Start/check status/stop a VM in a cloud infrastructure.</span>
+<span class="sd">* List VM images and their associated metadata.</span>
+<span class="sd">* List available machine types/sizes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c"># Copyright (C) 2011 ETH Zurich and University of Zurich. All rights reserved.</span>
+<span class="c">#</span>
+<span class="c"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c"># you may not use this file except in compliance with the License.</span>
+<span class="c"># You may obtain a copy of the License at</span>
+<span class="c">#</span>
+<span class="c">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c">#</span>
+<span class="c"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c"># See the License for the specific language governing permissions and</span>
+<span class="c"># limitations under the License.</span>
+<span class="c">#</span>
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText&#39;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&#39;$Revision$&#39;</span>
+
+
+<div class="viewcode-block" id="VMControl"><a class="viewcode-back" href="../api.html#vmlibs.VMControl">[docs]</a><span class="k">class</span> <span class="nc">VMControl</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Control the lifecycle of a VM.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize an empty VMControl object.  You must run</span>
+<span class="sd">        configuration methods in order to get a working object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="VMControl.import_configuration"><a class="viewcode-back" href="../api.html#vmlibs.VMControl.import_configuration">[docs]</a>    <span class="k">def</span> <span class="nf">import_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read `filename` and use it to configure this `VMControl` instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="VMControl.list_available_machtypes"><a class="viewcode-back" href="../api.html#vmlibs.VMControl.list_available_machtypes">[docs]</a>    <span class="k">def</span> <span class="nf">list_available_machtypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Query cloud servers and return a list of machine types available.</span>
+
+<span class="sd">        The return value is a list of &quot;machine type IDs&quot;;</span>
+<span class="sd">        you should run `get_machtype_info` to translate the IDs into</span>
+<span class="sd">        information that can be programmatically consumed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="VMControl.get_machtype_info"><a class="viewcode-back" href="../api.html#vmlibs.VMControl.get_machtype_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_machtype_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mtid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return complete information on the machine type identified by</span>
+<span class="sd">        `mtid`.</span>
+
+<span class="sd">        The return value is a named tuple object, with the following fields:</span>
+
+<span class="sd">        =========  =====  ==================================</span>
+<span class="sd">        attribute  type   meaning</span>
+<span class="sd">        =========  =====  ==================================</span>
+<span class="sd">        id         str    a copy of `mtid`</span>
+<span class="sd">        ram        int    amount of RAM, in MB</span>
+<span class="sd">        slots      int    number of CPU cores available</span>
+<span class="sd">        bandwidth  int    max bandwidth, in MB/s</span>
+<span class="sd">        cloud      str    identifier of the Cloud provider</span>
+<span class="sd">        =========  =====  ==================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="VMControl.start"><a class="viewcode-back" href="../api.html#vmlibs.VMControl.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vmid</span><span class="p">,</span> <span class="n">mtid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start a VM given a &quot;VM image ID&quot; `vmid` and a &quot;machine type ID&quot; `mtid`.</span>
+<span class="sd">        Return a unique `hid` (&quot;VM handle id&quot;) that can be used to operate on</span>
+<span class="sd">        the started instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="VMControl.stop"><a class="viewcode-back" href="../api.html#vmlibs.VMControl.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop the VM identified by `hid`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="VMControl.get_status"><a class="viewcode-back" href="../api.html#vmlibs.VMControl.get_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the status of the VM instance identified by `hid`.</span>
+
+<span class="sd">        The returned status is one of the following strings:</span>
+
+<span class="sd">        ========= ============================================================</span>
+<span class="sd">        status    meaning</span>
+<span class="sd">        ========= ============================================================</span>
+<span class="sd">        WAITING   A request to start the VM has been sent to the Cloud server, but the VM is not ready yet.</span>
+<span class="sd">        UP        The machine is up and running, and connected to the network.</span>
+<span class="sd">        STOPPED   The remote VM has been frozen, but normal execution can be resumed.</span>
+<span class="sd">        DOWN      The VM has been stopped and cannot be restarted/resumed.</span>
+<span class="sd">        ========= ============================================================</span>
+
+<span class="sd">        Raise `ValueError` if `hid` is not a valid &quot;VM handle&quot;</span>
+<span class="sd">        as returned by the `self.start`:meth: method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="VMControl.get_info"><a class="viewcode-back" href="../api.html#vmlibs.VMControl.get_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return information on the VM instance identified by `hid`.</span>
+
+<span class="sd">        The return value is a named tuple object, conforming to the</span>
+<span class="sd">        following specification:</span>
+
+<span class="sd">        ============  ========  ================================================</span>
+<span class="sd">        attribute     type      meaning</span>
+<span class="sd">        ============  ========  ================================================</span>
+<span class="sd">        public_ip     str       public IP address in dot quad notation</span>
+<span class="sd">        private_ip    str       private IP address in dot quad notation</span>
+<span class="sd">        vmid          str       the VM image ID used to create the image</span>
+<span class="sd">        mtid          str       the machine type ID used to create the image</span>
+<span class="sd">        cloud         str       cloud identifier</span>
+<span class="sd">        started_at    datetime  when the request to start the machine was issued</span>
+<span class="sd">        up_at         datetime  when the machine was detected up and running</span>
+<span class="sd">        running_time  duration  total running time (in seconds)</span>
+<span class="sd">        bill          float     total cost to be billed by cloud provider</span>
+<span class="sd">        ============  ========  ================================================</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+</div></div>
+<div class="viewcode-block" id="MetadataQuery"><a class="viewcode-back" href="../api.html#vmlibs.MetadataQuery">[docs]</a><span class="k">class</span> <span class="nc">MetadataQuery</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform queries to a VM-MAD metadata server.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize a `MetadataQuery` object for interacting with the</span>
+<span class="sd">        server at `endpoint`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span> <span class="o">=</span> <span class="n">endpoint</span>
+    
+
+<div class="viewcode-block" id="MetadataQuery.search_image"><a class="viewcode-back" href="../api.html#vmlibs.MetadataQuery.search_image">[docs]</a>    <span class="k">def</span> <span class="nf">search_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given a set of tags, return the set of VM image IDs that have all</span>
+<span class="sd">        the given tags.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+</div>
+<div class="viewcode-block" id="MetadataQuery.get_image_info"><a class="viewcode-back" href="../api.html#vmlibs.MetadataQuery.get_image_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_image_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vmid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Query the metadata server and return all the metadata available</span>
+<span class="sd">        for the image identified by `vmid`.</span>
+
+<span class="sd">        The return value is a Python dictionary; both keys and values are</span>
+<span class="sd">        string types (or subclasses thereof).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+
+<span class="c">## main: run tests</span>
+</div></div>
+<span class="k">if</span> <span class="s">&quot;__main__&quot;</span> <span class="o">==</span> <span class="n">__name__</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">doctest</span>
+    <span class="n">doctest</span><span class="o">.</span><span class="n">testmod</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;__init__&quot;</span><span class="p">,</span>
+                    <span class="n">optionflags</span><span class="o">=</span><span class="n">doctest</span><span class="o">.</span><span class="n">NORMALIZE_WHITESPACE</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Simon Barkow, Peter Kunszt, Sergio Maffioletti, Riccardo Murri, Christian Panse.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+    </div>
+  </body>
+</html>

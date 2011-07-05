@@ -1,0 +1,272 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Installation of GC3Utils &mdash; VM-MAD vdevelopment (SVN $Revision$) documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     'development (SVN $Revision$)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="VM-MAD vdevelopment (SVN $Revision$) documentation" href="index.html" />
+    <link rel="next" title="VMlib modules" href="api.html" />
+    <link rel="prev" title="Welcome to VM-MAD’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api.html" title="VMlib modules"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to VM-MAD’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="installation-of-gc3utils">
+<h1>Installation of GC3Utils<a class="headerlink" href="#installation-of-gc3utils" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Author:</th><td class="field-body">Riccardo Murri &lt;<a class="reference external" href="mailto:riccardo&#46;murri&#37;&#52;&#48;gmail&#46;com">riccardo<span>&#46;</span>murri<span>&#64;</span>gmail<span>&#46;</span>com</a>&gt;</td>
+</tr>
+<tr class="field"><th class="field-name">Date:</th><td class="field-body">2010-10-06</td>
+</tr>
+<tr class="field"><th class="field-name">Revision:</th><td class="field-body">$Revision$</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>These instructions show how to install VM-MAD from the source
+repository into a separate python environment (called <a class="reference external" href="http://pypi.python.org/pypi/virtualenv/1.5.1">virtualenv</a>).
+Installation into a virtualenv has two distinct advantages:</p>
+<blockquote>
+<ul class="simple">
+<li>All code is confined in a single directory,
+and can thus be easily replaced/removed.</li>
+<li>Better dependency handling: additional Python packages
+that VM-MAD depends upon can be installed even if they
+conflict with system-level packages.</li>
+</ul>
+</blockquote>
+<ol class="arabic" start="0">
+<li><p class="first">Install software prerequisites:</p>
+<ul>
+<li><p class="first">On Debian/Ubuntu, install packages: <tt class="docutils literal"><span class="pre">subversion</span></tt>,
+<tt class="docutils literal"><span class="pre">python-dev</span></tt>, <tt class="docutils literal"><span class="pre">python-profiler</span></tt> and the C/C++ compiler:</p>
+<div class="highlight-python"><pre>apt-get install subversion python-dev python-profiler gcc g++</pre>
+</div>
+</li>
+<li><p class="first">On CentOS5, install packages <tt class="docutils literal"><span class="pre">subversion</span></tt> and <tt class="docutils literal"><span class="pre">python-devel</span></tt>
+and the C/C++ compiler:</p>
+<div class="highlight-python"><pre>yum install subversion python-devel gcc gcc-c++</pre>
+</div>
+</li>
+<li><p class="first">On other Linux distributions, you will need to install:</p>
+<ul class="simple">
+<li>the <tt class="docutils literal"><span class="pre">svn</span></tt> command (from the <a class="reference external" href="http://subversion.tigris.org/">SubVersion</a> VCS)</li>
+<li>Python development headers and libraries
+(for installing extension libraries written in C/C++)</li>
+<li>the Python package <tt class="docutils literal"><span class="pre">pstats</span></tt> (it&#8217;s part of the Python
+standard library, but sometimes it needs separate installation)</li>
+<li>a C/C++ compiler (this is usually installed by default).</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p class="first">Choose a directory where the VM-MAD software will be installed;
+any directory that&#8217;s writable by your Linux account will be ok.</p>
+<p>If you are installing system-wide as <tt class="docutils literal"><span class="pre">root</span></tt>, we suggest you
+install VM-MAD into <tt class="docutils literal"><span class="pre">/opt/vm-mad</span></tt>.</p>
+<p>If you are installing as a normal user, we suggest you install
+VM-MAD into <tt class="docutils literal"><span class="pre">$HOME/vm-mad</span></tt>.</p>
+</li>
+<li><p class="first">If it&#8217;s not already installed, get the <a class="reference external" href="http://pypi.python.org/pypi/virtualenv/1.5.1">virtualenv</a> Python package
+and install it:</p>
+<div class="highlight-python"><pre>  wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.5.1.tar.gz
+  tar -xzf virtualenv-1.5.1.tar.gz &amp;&amp; rm virtualenv-1.5.1.tar.gz
+  cd virtualenv-1.5.1/
+
+If you are installing as `root`, the following command is all you
+need:
+
+  python setup.py install
+
+If instead you are installing as a normal, unprivileged user,
+things get more complicated::
+
+  export PYTHONPATH=$HOME/lib64/python:$HOME/lib/python:$PYTHONPATH
+  export PATH=$PATH:$HOME/bin
+  mkdir -p $HOME/lib/python
+  python setup.py install --home $HOME
+
+(You will also need to add the two `export` lines above to the
+`$HOME/.bashrc` file -if using the `bash` shell- or to the
+`$HOME/.cshrc` file -if using the `tcsh` shell.)
+
+In any case, once `virtualenv`_ has been installed, you can exit
+its directory and remove it::
+
+  cd ..
+  rm -rf virtualenv-1.5.1</pre>
+</div>
+</li>
+<li><p class="first">Create a virtualenv to host the <tt class="docutils literal"><span class="pre">vm-mad</span></tt> installation at the
+directory you chose in Step 1.:</p>
+<div class="highlight-python"><pre>virtualenv $HOME/vm-mad # use '/opt/vm-mad' if installing as root
+cd $HOME/vm-mad/
+source bin/activate</pre>
+</div>
+</li>
+<li><p class="first">Check-out the <tt class="docutils literal"><span class="pre">vm-mad</span></tt> files in a <tt class="docutils literal"><span class="pre">src/</span></tt> directory:</p>
+<div class="highlight-python"><pre>svn co http://vm-mad.googlecode.com/svn/trunk/vm-mad src</pre>
+</div>
+</li>
+<li><p class="first">Install the <tt class="docutils literal"><span class="pre">vm-mad</span></tt> in &#8220;develop&#8221; mode, so any modification
+pulled from subversion is immediately reflected in the running environment:</p>
+<div class="highlight-python"><pre>cd src/
+env CC=gcc ./setup.py develop
+cd .. # back into the `vm-mad` directory</pre>
+</div>
+<p>This will place all the VM-MAD command into the <tt class="docutils literal"><span class="pre">vm-mad/bin/</span></tt>
+directory.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="upgrade">
+<h2>Upgrade<a class="headerlink" href="#upgrade" title="Permalink to this headline">¶</a></h2>
+<p>These instructions show how to upgrade the VM-MAD scripts to the
+latest version found in the GC3 svn repository.</p>
+<ol class="arabic">
+<li><p class="first"><cite>cd</cite> to the directory containing the VM-MAD virtualenv;
+assuming it&#8217;s named <tt class="docutils literal"><span class="pre">vm-mad</span></tt> as in the above installation
+instructions, you can issue the commands:</p>
+<div class="highlight-python"><pre>cd $HOME/vm-mad # use '/opt/vm-mad' if root</pre>
+</div>
+</li>
+<li><p class="first">Activate the virtualenv</p>
+<div class="highlight-python"><pre>source bin/activate</pre>
+</div>
+</li>
+<li><p class="first">Upgrade the <cite>vm-mad</cite> source and run the <cite>setup.py</cite> script again:</p>
+<div class="highlight-python"><pre>cd src
+svn up
+env CC=gcc ./setup.py develop</pre>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="html-documentation">
+<h2>HTML Documentation<a class="headerlink" href="#html-documentation" title="Permalink to this headline">¶</a></h2>
+<p>HTML documentation for the VMlib programming interface can be
+read online at:</p>
+<blockquote>
+<a class="reference external" href="http://vm-mad.googlecode.com/svn/trunk/doc/html/index.html">http://vm-mad.googlecode.com/svn/trunk/doc/html/index.html</a></blockquote>
+<p>You can also generate a local copy from the sources:</p>
+<div class="highlight-python"><pre>cd $HOME/vm-mad # use '/opt/vm-mad' if root
+cd src/docs
+make html</pre>
+</div>
+<p>Note that you need the Python package <cite>Sphinx &lt;http://sphinx.pocoo.org&gt;</cite>
+(at least versdion 1.0) in order to build the documentation locally.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Installation of GC3Utils</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#upgrade">Upgrade</a></li>
+<li><a class="reference internal" href="#html-documentation">HTML Documentation</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to VM-MAD&#8217;s documentation!</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="api.html"
+                        title="next chapter">VMlib modules</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/install.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api.html" title="VMlib modules"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to VM-MAD’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Simon Barkow, Peter Kunszt, Sergio Maffioletti, Riccardo Murri, Christian Panse.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+    </div>
+  </body>
+</html>
