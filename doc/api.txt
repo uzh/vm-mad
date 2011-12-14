@@ -2,11 +2,24 @@
 
 
 +++++++++++++++++
- VMlib modules
+ VM-MAD modules
 +++++++++++++++++
 
 
-`vmlibs`
-=========
-.. automodule:: vmlibs
+`orchestrator`
+==============
+.. automodule:: orchestrator
    :members:
+
+
+`simul`
+=======
+.. automodule:: simul
+   :members:
+
+
+`ge_info`
+=========
+.. automodule:: ge_info
+   :members:
+

@@ -1,0 +1,373 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ge_info &mdash; VM-MAD vdevelopment (SVN $Revision$) documentation</title>
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     'development (SVN $Revision$)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="VM-MAD vdevelopment (SVN $Revision$) documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ge_info</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/python</span>
+<span class="c"># -*- coding: utf-8 -*-</span>
+
+<span class="c"># Copyright (c) 2010, 2011 by Christian Panse &lt;cp@fgcz.ethz.ch&gt;</span>
+<span class="c">#</span>
+<span class="c"># All rights reserved. This program is free software; you may</span>
+<span class="c"># redistribute it and/or modify it under the same terms as Python itself.</span>
+<span class="c"># Distributed without any warranties whatsoever.</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+                    <span class="n">format</span><span class="o">=</span><span class="s">&#39;</span><span class="si">%(name)s</span><span class="s">: [</span><span class="si">%(asctime)s</span><span class="s">] </span><span class="si">%(levelname)-8s</span><span class="s">: </span><span class="si">%(message)s</span><span class="s">&#39;</span><span class="p">,</span>
+                    <span class="n">datefmt</span><span class="o">=</span><span class="s">&#39;%Y-%m-</span><span class="si">%d</span><span class="s"> %H:%M:%S&#39;</span><span class="p">)</span>
+
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">defaultdict</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">UserDict</span>
+<span class="kn">import</span> <span class="nn">xml.sax</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">http://docs.python.org/library/curses.html</span>
+<span class="sd">http://svn.python.org/projects/python/trunk/Demo/curses/</span>
+<span class="sd">http://fgcz-data.uzh.ch/cgi-bin/fgcz_ge_info.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="c"># In Python 2.7 still, `DictMixin` is an old-style class; thus, we need</span>
+<span class="c"># to make `Struct` inherit from `object` otherwise we loose properties</span>
+<span class="c"># when setting/pickling/unpickling</span>
+<div class="viewcode-block" id="Struct"><a class="viewcode-back" href="../api.html#ge_info.Struct">[docs]</a><span class="k">class</span> <span class="nc">Struct</span><span class="p">(</span><span class="n">Mapping</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A `dict`-like object, whose keys can be accessed with the usual</span>
+<span class="sd">    &#39;[...]&#39; lookup syntax, or with the &#39;.&#39; get attribute syntax.</span>
+
+<span class="sd">    Examples::</span>
+
+<span class="sd">      &gt;&gt;&gt; a = Struct()</span>
+<span class="sd">      &gt;&gt;&gt; a[&#39;x&#39;] = 1</span>
+<span class="sd">      &gt;&gt;&gt; a.x</span>
+<span class="sd">      1</span>
+<span class="sd">      &gt;&gt;&gt; a.y = 2</span>
+<span class="sd">      &gt;&gt;&gt; a[&#39;y&#39;]</span>
+<span class="sd">      2</span>
+
+<span class="sd">    Values can also be initially set by specifying them as keyword</span>
+<span class="sd">    arguments to the constructor::</span>
+
+<span class="sd">      &gt;&gt;&gt; a = Struct(z=3)</span>
+<span class="sd">      &gt;&gt;&gt; a[&#39;z&#39;]</span>
+<span class="sd">      3</span>
+<span class="sd">      &gt;&gt;&gt; a.z</span>
+<span class="sd">      3</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initializer</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">initializer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c"># initializer is `dict`-like?</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">initializer</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> 
+                <span class="c"># initializer is a sequence of (name,value) pairs?</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">initializer</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="c"># the `Mapping` abstract class defines all std `dict` methods,</span>
+    <span class="c"># provided that `__getitem__`, `__setitem__` and `keys` and a few</span>
+    <span class="c"># others are defined.</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="myQstatHandler"><a class="viewcode-back" href="../api.html#ge_info.myQstatHandler">[docs]</a><span class="k">class</span> <span class="nc">myQstatHandler</span><span class="p">(</span><span class="n">xml</span><span class="o">.</span><span class="n">sax</span><span class="o">.</span><span class="n">ContentHandler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Example:</span>
+
+<span class="sd">  $ qstat -u &#39;*&#39; -xml</span>
+<span class="sd">  &lt;?xml version=&#39;1.0&#39;?&gt;</span>
+<span class="sd">  &lt;job_info  xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;</span>
+<span class="sd">    &lt;queue_info&gt;</span>
+<span class="sd">      &lt;job_list state=&quot;running&quot;&gt;</span>
+<span class="sd">        &lt;JB_job_number&gt;389524&lt;/JB_job_number&gt;</span>
+<span class="sd">        &lt;JAT_prio&gt;0.50500&lt;/JAT_prio&gt;</span>
+<span class="sd">        &lt;JB_name&gt;QRLOGIN&lt;/JB_name&gt;</span>
+<span class="sd">        &lt;JB_owner&gt;cpanse&lt;/JB_owner&gt;</span>
+<span class="sd">        &lt;state&gt;r&lt;/state&gt;</span>
+<span class="sd">        &lt;JAT_start_time&gt;2011-11-23T17:20:34&lt;/JAT_start_time&gt;</span>
+<span class="sd">        &lt;queue_name&gt;cloud@fgcz-cloud-002&lt;/queue_name&gt;</span>
+<span class="sd">        &lt;slots&gt;1&lt;/slots&gt;</span>
+<span class="sd">      &lt;/job_list&gt;</span>
+<span class="sd">      &lt;job_list state=&quot;running&quot;&gt;</span>
+<span class="sd">        &lt;JB_job_number&gt;390489&lt;/JB_job_number&gt;</span>
+<span class="sd">        &lt;JAT_prio&gt;0.50500&lt;/JAT_prio&gt;</span>
+<span class="sd">        &lt;JB_name&gt;fgcz_sge_rserver__108564&lt;/JB_name&gt;</span>
+<span class="sd">        &lt;JB_owner&gt;bfabric&lt;/JB_owner&gt;</span>
+<span class="sd">        &lt;state&gt;r&lt;/state&gt;</span>
+<span class="sd">        &lt;JAT_start_time&gt;2011-12-12T18:46:06&lt;/JAT_start_time&gt;</span>
+<span class="sd">        &lt;queue_name&gt;rserver@fgcz-c-054&lt;/queue_name&gt;</span>
+<span class="sd">        &lt;slots&gt;1&lt;/slots&gt;</span>
+<span class="sd">      &lt;/job_list&gt;</span>
+<span class="sd">      &lt;job_list state=&quot;running&quot;&gt;</span>
+<span class="sd">        &lt;JB_job_number&gt;390527&lt;/JB_job_number&gt;</span>
+<span class="sd">        &lt;JAT_prio&gt;0.50500&lt;/JAT_prio&gt;</span>
+<span class="sd">        &lt;JB_name&gt;KasalathS3_1-tophat.sh&lt;/JB_name&gt;</span>
+<span class="sd">        &lt;JB_owner&gt;hubert&lt;/JB_owner&gt;</span>
+<span class="sd">        &lt;state&gt;r&lt;/state&gt;</span>
+<span class="sd">        &lt;JAT_start_time&gt;2011-12-13T07:02:51&lt;/JAT_start_time&gt;</span>
+<span class="sd">        &lt;queue_name&gt;GT@fgcz-c-065&lt;/queue_name&gt;</span>
+<span class="sd">        &lt;slots&gt;1&lt;/slots&gt;</span>
+<span class="sd">      &lt;/job_list&gt;</span>
+<span class="sd">      &lt;job_list state=&quot;running&quot;&gt;</span>
+<span class="sd">        &lt;JB_job_number&gt;390548&lt;/JB_job_number&gt;</span>
+<span class="sd">        &lt;JAT_prio&gt;0.50500&lt;/JAT_prio&gt;</span>
+<span class="sd">        &lt;JB_name&gt;fgcz_sge_rserver__108707&lt;/JB_name&gt;</span>
+<span class="sd">        &lt;JB_owner&gt;bfabric&lt;/JB_owner&gt;</span>
+<span class="sd">        &lt;state&gt;r&lt;/state&gt;</span>
+<span class="sd">        &lt;JAT_start_time&gt;2011-12-13T09:32:21&lt;/JAT_start_time&gt;</span>
+<span class="sd">        &lt;queue_name&gt;rserver@fgcz-c-051&lt;/queue_name&gt;</span>
+<span class="sd">        &lt;slots&gt;1&lt;/slots&gt;</span>
+<span class="sd">      &lt;/job_list&gt;</span>
+<span class="sd">      &lt;job_list state=&quot;running&quot;&gt;</span>
+<span class="sd">        &lt;JB_job_number&gt;390553&lt;/JB_job_number&gt;</span>
+<span class="sd">        &lt;JAT_prio&gt;0.50500&lt;/JAT_prio&gt;</span>
+<span class="sd">        &lt;JB_name&gt;fgcz_sge_rserver__108708&lt;/JB_name&gt;</span>
+<span class="sd">        &lt;JB_owner&gt;bfabric&lt;/JB_owner&gt;</span>
+<span class="sd">        &lt;state&gt;r&lt;/state&gt;</span>
+<span class="sd">        &lt;JAT_start_time&gt;2011-12-13T11:02:36&lt;/JAT_start_time&gt;</span>
+<span class="sd">        &lt;queue_name&gt;rserver@fgcz-c-063&lt;/queue_name&gt;</span>
+<span class="sd">        &lt;slots&gt;1&lt;/slots&gt;</span>
+<span class="sd">      &lt;/job_list&gt;</span>
+<span class="sd">      &lt;job_list state=&quot;running&quot;&gt;</span>
+<span class="sd">        &lt;JB_job_number&gt;390554&lt;/JB_job_number&gt;</span>
+<span class="sd">        &lt;JAT_prio&gt;0.60500&lt;/JAT_prio&gt;</span>
+<span class="sd">        &lt;JB_name&gt;p582_POG&lt;/JB_name&gt;</span>
+<span class="sd">        &lt;JB_owner&gt;tanguy&lt;/JB_owner&gt;</span>
+<span class="sd">        &lt;state&gt;r&lt;/state&gt;</span>
+<span class="sd">        &lt;JAT_start_time&gt;2011-12-13T11:04:45&lt;/JAT_start_time&gt;</span>
+<span class="sd">        &lt;queue_name&gt;GT@fgcz-c-054&lt;/queue_name&gt;</span>
+<span class="sd">        &lt;slots&gt;8&lt;/slots&gt;</span>
+<span class="sd">      &lt;/job_list&gt;</span>
+<span class="sd">    &lt;/queue_info&gt;</span>
+<span class="sd">    &lt;job_info&gt;</span>
+<span class="sd">      &lt;job_list state=&quot;pending&quot;&gt;</span>
+<span class="sd">        &lt;JB_job_number&gt;389632&lt;/JB_job_number&gt;</span>
+<span class="sd">        &lt;JAT_prio&gt;0.50500&lt;/JAT_prio&gt;</span>
+<span class="sd">        &lt;JB_name&gt;STDIN&lt;/JB_name&gt;</span>
+<span class="sd">        &lt;JB_owner&gt;cpanse&lt;/JB_owner&gt;</span>
+<span class="sd">        &lt;state&gt;qw&lt;/state&gt;</span>
+<span class="sd">        &lt;JB_submission_time&gt;2011-11-26T08:41:59&lt;/JB_submission_time&gt;</span>
+<span class="sd">        &lt;queue_name&gt;&lt;/queue_name&gt;</span>
+<span class="sd">        &lt;slots&gt;1&lt;/slots&gt;</span>
+<span class="sd">      &lt;/job_list&gt;</span>
+<span class="sd">    &lt;/job_info&gt;</span>
+<span class="sd">  &lt;/job_info&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+        <span class="c"># these XML elements yield information about a job</span>
+        <span class="n">JOB_ATTRIBUTES</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="s">&#39;JB_job_number&#39;</span><span class="p">,</span>
+                <span class="s">&#39;JAT_prio&#39;</span><span class="p">,</span>
+                <span class="s">&#39;JB_name&#39;</span><span class="p">,</span>
+                <span class="s">&#39;state&#39;</span><span class="p">,</span>
+                <span class="s">&#39;JB_submission_time&#39;</span><span class="p">,</span>
+                <span class="s">&#39;queue_name&#39;</span><span class="p">,</span>
+                <span class="s">&#39;slots&#39;</span>
+                <span class="p">]</span>
+
+        <span class="c"># conversion of XML fields to Python data</span>
+        <span class="n">CONVERT</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span>
+                <span class="c"># by default, return `str`</span>
+                <span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                <span class="c"># return other values in particular cases:</span>
+                <span class="n">JB_job_number</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                <span class="n">JAT_prio</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                <span class="n">slots</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dest</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dest</span> <span class="o">=</span> <span class="n">dest</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="p">[</span> <span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pending</span> <span class="o">=</span> <span class="p">[</span> <span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="p">[</span> <span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_level</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">def</span> <span class="nf">startElement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">attrs</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_level</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s">&#39;job_list&#39;</span><span class="p">:</span>
+                        <span class="k">assert</span> <span class="s">&#39;state&#39;</span> <span class="ow">in</span> <span class="n">attrs</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">current</span> <span class="o">=</span> <span class="n">Struct</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">current_job_state</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="s">&#39;state&#39;</span><span class="p">]</span>
+
+                <span class="c">## for other elements, just reset `value` so we can</span>
+                <span class="c">## accumulate characters in `self.characters`</span>
+                <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+        <span class="k">def</span> <span class="nf">characters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chrs</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chrs</span><span class="p">)</span>
+
+
+        <span class="k">def</span> <span class="nf">endElement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_level</span> <span class="o">-=</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_level</span><span class="p">:</span>
+                        <span class="c"># end of XML, output data structure</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="o">.</span><span class="n">pending</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending</span>
+                        <span class="k">return</span>
+
+                <span class="k">if</span> <span class="s">&#39;job_list&#39;</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+                        <span class="c"># end of job description, commit</span>
+                        <span class="k">if</span> <span class="s">&#39;running&#39;</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_job_state</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="s">&#39;pending&#39;</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_job_state</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">pending</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                                <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s">&quot;Unexpected job state &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span>
+                                                     <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_job_state</span><span class="p">)</span>
+                        <span class="k">return</span>
+
+                <span class="c"># process job-level elements</span>
+                <span class="n">value_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+                <span class="k">if</span> <span class="s">&#39;queue_name&#39;</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="s">&#39;&#39;</span> <span class="o">==</span> <span class="n">value_str</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">current</span><span class="p">[</span><span class="s">&#39;queue_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+                        <span class="k">else</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">current</span><span class="p">[</span><span class="s">&#39;queue_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value_str</span>
+                <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">JOB_ATTRIBUTES</span><span class="p">:</span>
+                        <span class="c"># convert each XML attribute to a Python representation</span>
+                        <span class="c"># (defaulting to `str`, see CONVERT above)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">current</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">CONVERT</span><span class="p">[</span><span class="n">name</span><span class="p">](</span><span class="n">value_str</span><span class="p">)</span>
+
+                <span class="k">return</span>
+
+</div>
+<span class="k">def</span> <span class="nf">running_and_pending_jobs</span><span class="p">():</span>
+        <span class="n">jobs</span> <span class="o">=</span> <span class="n">Struct</span><span class="p">()</span>
+        <span class="n">xml</span><span class="o">.</span><span class="n">sax</span><span class="o">.</span><span class="n">make_parser</span><span class="p">()</span>
+        <span class="n">qstat_cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;qstat&#39;</span><span class="p">,</span> <span class="s">&#39;-u&#39;</span><span class="p">,</span> <span class="s">&#39;*&#39;</span><span class="p">,</span> <span class="s">&#39;-xml&#39;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+                <span class="n">qstat_process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+                        <span class="n">qstat_cmd</span><span class="p">,</span>
+                        <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                        <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                        <span class="n">shell</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+                <span class="n">qstat_stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">qstat_process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+                <span class="n">xml</span><span class="o">.</span><span class="n">sax</span><span class="o">.</span><span class="n">parseString</span><span class="p">(</span><span class="n">qstat_stdout</span><span class="p">,</span> <span class="n">myQstatHandler</span><span class="p">(</span><span class="n">jobs</span><span class="p">))</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">,</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Error running &#39;</span><span class="si">%s</span><span class="s">&#39;: exit code </span><span class="si">%d</span><span class="s">&quot;</span><span class="p">,</span>
+                              <span class="nb">str</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="n">qstat_cmd</span><span class="p">),</span> <span class="n">ex</span><span class="o">.</span><span class="n">returncode</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Unexpected error: </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                              <span class="n">ex</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">))</span>
+                <span class="k">raise</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">jobs</span><span class="o">.</span><span class="n">running</span><span class="p">,</span> <span class="n">jobs</span><span class="o">.</span><span class="n">pending</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+        <span class="n">jobs</span> <span class="o">=</span> <span class="n">running_and_pending_jobs</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&quot;Running jobs:&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">jobs</span><span class="o">.</span><span class="n">running</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&quot;Pending jobs:&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">jobs</span><span class="o">.</span><span class="n">pending</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Simon Barkow, Peter Kunszt, Sergio Maffioletti, Riccardo Murri, Christian Panse.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
