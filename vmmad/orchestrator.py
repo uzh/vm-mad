@@ -28,11 +28,12 @@ __version__ = '$Revision$'
 # stdlib imports
 import os
 import sys
+import time
 
 # apache libcloud
-from libcloud.compute.types import Provider
-from libcloud.compute.providers import get_driver
-import libcloud.security
+#from libcloud.compute.types import Provider
+#from libcloud.compute.providers import get_driver
+#import libcloud.security
 
 # local imports
 import ge_info
@@ -57,9 +58,8 @@ class Orchestrator(object):
         # mapping jobid to job informations
         self.candidates = { }
 
-
     def update_job_status(self):
-        running, pending = self.sched_info_fn()
+        running, pending = self.get_sched_info()
 
         for job in running:
             # running jobs are no longer candidates
@@ -71,14 +71,14 @@ class Orchestrator(object):
             if self.is_cloud_candidate(job):
                 self.candidates[job.job_number] = job
 
-    def _get_sched_info(self):
+    def get_sched_info(self):
         """
         A function returning a pair (running, pending)
         of two lists of running/pending jobs.
         """
         return ge_info.running_and_pending_jobs()
 
-    @abstractmethod
+    #@abstractmethod
     def is_cloud_candidate(self, job):
         """Return `True` if `job` can be run in a cloud node.
 
@@ -91,33 +91,67 @@ class Orchestrator(object):
     def update_vm_status(self):
         """Query SGE and update `self.pool` with VM node status (busy, idle) info."""
         # also query EC2 about VM status?
-        
+        pass
 
-    def start_vm_if_needed(self):
+
+    def is_new_vm_needed(self):
         """Inspect job collection and decide whether we need to start new VMs."""
         if len(self.candidates) > 0:
-            pass
+            return True
 
-    @abstractmethod
-    def _started_vm(self):
-        """Virtual mehtod for starting a new VM."""
+    #@abstractmethod
+    def start_vm(self):
+        """Virtual method for starting a new VM.
+
+        Return the VM ID of the started virtual machine, which can be
+        passed to the `stop_vm` method to stop it later.
+        """
+        pass
+
+    def can_vm_be_stopped(self, vmid):
+        """Return `True` if the VM identified by `vmid` is no longer
+        needed and can be stopped.
+        """
+        pass
+
+    #@abstractmethod
+    def stop_vm(self, vmid):
+        """Virtual method for stopping a VM.
+
+        Takes a `vmid` argument, which is the return value of a
+        previous `start_vm` call.
+        """
+        pass
 
 
-    def stop_vm_if_needed(self):
-        ""
+    def before(self):
+        """Hook called at the start of the main run() cycle."""
+        pass
 
-    @abstractmethod
-    def _stop_vm(self):
-        """Virtual method for stopping a VM."""
+
+    def after(self):
+        """Hook called at the end of the main run() cycle."""
+        pass
 
 
     def run(self, delay=30):
         while True:
+            self.before()
+            
             self.update_job_status()
             self.update_vm_status()
 
-            self.start_vm_if_needed()
-            self.stop_vm_if_needed()
+            if self.is_new_vm_needed() and len(self.pool) < self.max_vms:
+                new_vm = self.start_vm()
+                if new_vm is not None:
+                    self.pool.append(new_vm)
+
+            for vmid in self.pool:
+                if self.can_vm_be_stopped(vmid):
+                    if self.stop_vm(vmid):
+                        self.pool.remove(vmid)
+
+            self.after()
 
             time.sleep(delay)
 
@@ -126,5 +160,5 @@ class Orchestrator(object):
 
 
 if "__main__" == __name__:
-    run()
-
+    # XXX: won't work, as Orchestrator is an abstract class
+    Orchestrator().run()
