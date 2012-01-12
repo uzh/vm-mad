@@ -25,8 +25,23 @@ __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
 
-
+# stdlib imports
 from collections import Mapping
+import functools
+
+
+def abstractmethod(fn):
+    """
+    Make a method "abstract": if it is ever called,
+    raises a `NotImplementedError` telling user
+    that the method should have been implemented in a subclass.
+    """
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        raise NotImplementedError("Called abstract method '%s.%s':"
+                                  " should have been implemented in a subclass."
+                                  % (fn.im_class.__name__, fn.im_func.__name__))
+    return wrapper
 
 
 class Struct(Mapping):

@@ -37,23 +37,46 @@ import time
 
 # local imports
 import ge_info
+from util import abstractmethod
 
 
-
-##
+## the main class of this file
 
 class Orchestrator(object):
+    """
+    The `Orchestrator` monitors a job queue and starts/stops VMs
+    according to a pre-defined policy in order to offload jobs from
+    the queue.
+
+    `Orchestrator` is an abstract class that cannot be directly
+    instanciated: subclassing is needed to define a policy and
+    implement interfaces to an actual queuing system and cloud
+    backend.
+
+    The actual VM start/stop policy is defined by overriding methods
+    `is_new_vm_needed` and `can_stop_vm`.  Each of these methods can
+    access a list of candidate jobs as attribute `self.candidates`;
+    the `can_stop_vm` method is additionally passed a VM ID and can
+    inspect data from that VM.
+
+    The only method required to interface to a batch queueing system
+    is `get_sched_info`, which see for its interface and purpose.
+
+    Methods `start_vm` and `stop_vm` implement the interface to a
+    cloud backend; see the method documentation for the exact
+    interface.
+    """
 
     def __init__(self, max_vms, max_delta=1):
         
-        # the max number of VMs that are allocated on the cloud
+        # max number of VMs that are allocated on the cloud
         self.max_vms = max_vms
 
-        # the max number of VMs that are started each cycle
+        # max number of VMs that can be started each cycle
         self.max_delta = max_delta
         
-        # list of started VMs
-        self.pool = [ ]
+        # map VM IDs to actual VM objects
+        self._started_vms = { }
 
         # mapping jobid to job informations
         self.candidates = { }
@@ -78,7 +101,7 @@ class Orchestrator(object):
         """
         return ge_info.running_and_pending_jobs()
 
-    #@abstractmethod
+    @abstractmethod
     def is_cloud_candidate(self, job):
         """Return `True` if `job` can be run in a cloud node.
 
@@ -89,8 +112,7 @@ class Orchestrator(object):
 
 
     def update_vm_status(self):
-        """Query SGE and update `self.pool` with VM node status (busy, idle) info."""
-        # also query EC2 about VM status?
+        """Query cloud providers and update `self._started_vms` with VM node status."""
         pass
 
 
@@ -99,7 +121,7 @@ class Orchestrator(object):
         if len(self.candidates) > 0:
             return True
 
-    #@abstractmethod
+    @abstractmethod
     def start_vm(self):
         """Virtual method for starting a new VM.
 
@@ -108,13 +130,14 @@ class Orchestrator(object):
         """
         pass
 
+    @abstractmethod
     def can_vm_be_stopped(self, vmid):
         """Return `True` if the VM identified by `vmid` is no longer
         needed and can be stopped.
         """
         pass
 
-    #@abstractmethod
+    @abstractmethod
     def stop_vm(self, vmid):
         """Virtual method for stopping a VM.
 
@@ -135,21 +158,36 @@ class Orchestrator(object):
 
 
     def run(self, delay=30):
+        """
+        Run the orchestrator until stopped.
+
+        Every `delay` seconds, the following operations are performed
+        in sequence:
+          - update job and VM status;
+          - start new VMs if needed;
+          - stop running VMs if they are no longer needed.
+        """
         while True:
             self.before()
             
             self.update_job_status()
             self.update_vm_status()
 
-            if self.is_new_vm_needed() and len(self.pool) < self.max_vms:
+            # start new VMs if needed
+            if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
                 new_vm = self.start_vm()
                 if new_vm is not None:
-                    self.pool.append(new_vm)
+                    self._started_vms[new_vm.vmid] = new_vm
 
-            for vmid in self.pool:
+            # stop VMs that are no longer needed
+            to_stop = [ ]
+            for vmid in self._started_vms:
                 if self.can_vm_be_stopped(vmid):
                     if self.stop_vm(vmid):
-                        self.pool.remove(vmid)
+                        to_stop.append(vmid)
+            for vmid in to_stop:
+                        del self._started_vms[vmid]
+                
 
             self.after()
 

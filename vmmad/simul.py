@@ -64,19 +64,19 @@ class OrchestratorSimulation(Orchestrator):
     def update_job_status(self):
         # do regular work
         Orchestrator.update_job_status(self)
-        # book-keeping
+        # simulate job run time passing and stop finished jobs
         done = [ ]
         for job in self._running:
             job.duration -= 1
             if job.duration <= 0:
-                vm_for_job = job.vm
-                vm_for_job.jobs.remove(job.job_number)
+                vm = job.vm
+                vm.jobs.remove(job.job_number)
                 done.append(job)
                 self._idle_vm_count += 1
-                logging.info("Job %s just finished; VM %s is now idle.", job.job_number, vm_for_job.vmid)
+                logging.info("Job %s just finished; VM %s is now idle.", job.job_number, vm.vmid)
         for job in done:
             self._running.remove(job)
-        # simulate SGE scheduler starting job
+        # simulate SGE scheduler starting a new job
         for vmid in self._started_vms:
             vm = self._started_vms[vmid]
             if vm.last_idle > 0:
@@ -100,9 +100,8 @@ class OrchestratorSimulation(Orchestrator):
 
     def start_vm(self):
         self._vmid += 1
-        self._started_vms[self._vmid] = Struct(vmid=self._vmid, been_running=0, total_idle=0, last_idle=(-self.startup_delay), jobs=[])
         logging.info("Started VM %s", self._vmid)
-        return self._vmid
+        return Struct(vmid=self._vmid, been_running=0, total_idle=0, last_idle=(-self.startup_delay), jobs=[])
 
     def update_vm_status(self):
         for vmid in self._started_vms:
@@ -118,7 +117,8 @@ class OrchestratorSimulation(Orchestrator):
                      self._started_vms[vmid].total_idle)
         if self._started_vms[vmid].last_idle > 0:
             self._idle_vm_count -= 1
-        del self._started_vms[vmid]
+        # nothing else to do, since the VM object is deleted by the
+        # main `Orchestrator` class.
         return True
 
     def is_new_vm_needed(self):
@@ -147,4 +147,4 @@ class OrchestratorSimulation(Orchestrator):
 
 
 if "__main__" == __name__:
-    OrchestratorSimulation(max_vms=20, max_idle=30, startup_delay=60, job_number=200, min_duration=3*360, max_duration=4*360).run(0.00001)
+    OrchestratorSimulation(max_vms=10, max_idle=30, startup_delay=60, job_number=50, min_duration=30, max_duration=120).run(0)
