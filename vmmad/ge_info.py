@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Functions to get information about a Sun/Oracle/Open Grid Engine
@@ -104,89 +104,11 @@ class Struct(Mapping):
         return self.__dict__.keys()
 
 
-class myQstatHandler(xml.sax.ContentHandler):
+class _QstatXmlHandler(xml.sax.ContentHandler):
         """
-Example:
-
-  $ qstat -u '*' -xml
-  <?xml version='1.0'?>
-  <job_info  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-    <queue_info>
-      <job_list state="running">
-        <JB_job_number>389524</JB_job_number>
-        <JAT_prio>0.50500</JAT_prio>
-        <JB_name>QRLOGIN</JB_name>
-        <JB_owner>cpanse</JB_owner>
-        <state>r</state>
-        <JAT_start_time>2011-11-23T17:20:34</JAT_start_time>
-        <queue_name>cloud@fgcz-cloud-002</queue_name>
-        <slots>1</slots>
-      </job_list>
-      <job_list state="running">
-        <JB_job_number>390489</JB_job_number>
-        <JAT_prio>0.50500</JAT_prio>
-        <JB_name>fgcz_sge_rserver__108564</JB_name>
-        <JB_owner>bfabric</JB_owner>
-        <state>r</state>
-        <JAT_start_time>2011-12-12T18:46:06</JAT_start_time>
-        <queue_name>rserver@fgcz-c-054</queue_name>
-        <slots>1</slots>
-      </job_list>
-      <job_list state="running">
-        <JB_job_number>390527</JB_job_number>
-        <JAT_prio>0.50500</JAT_prio>
-        <JB_name>KasalathS3_1-tophat.sh</JB_name>
-        <JB_owner>hubert</JB_owner>
-        <state>r</state>
-        <JAT_start_time>2011-12-13T07:02:51</JAT_start_time>
-        <queue_name>GT@fgcz-c-065</queue_name>
-        <slots>1</slots>
-      </job_list>
-      <job_list state="running">
-        <JB_job_number>390548</JB_job_number>
-        <JAT_prio>0.50500</JAT_prio>
-        <JB_name>fgcz_sge_rserver__108707</JB_name>
-        <JB_owner>bfabric</JB_owner>
-        <state>r</state>
-        <JAT_start_time>2011-12-13T09:32:21</JAT_start_time>
-        <queue_name>rserver@fgcz-c-051</queue_name>
-        <slots>1</slots>
-      </job_list>
-      <job_list state="running">
-        <JB_job_number>390553</JB_job_number>
-        <JAT_prio>0.50500</JAT_prio>
-        <JB_name>fgcz_sge_rserver__108708</JB_name>
-        <JB_owner>bfabric</JB_owner>
-        <state>r</state>
-        <JAT_start_time>2011-12-13T11:02:36</JAT_start_time>
-        <queue_name>rserver@fgcz-c-063</queue_name>
-        <slots>1</slots>
-      </job_list>
-      <job_list state="running">
-        <JB_job_number>390554</JB_job_number>
-        <JAT_prio>0.60500</JAT_prio>
-        <JB_name>p582_POG</JB_name>
-        <JB_owner>tanguy</JB_owner>
-        <state>r</state>
-        <JAT_start_time>2011-12-13T11:04:45</JAT_start_time>
-        <queue_name>GT@fgcz-c-054</queue_name>
-        <slots>8</slots>
-      </job_list>
-    </queue_info>
-    <job_info>
-      <job_list state="pending">
-        <JB_job_number>389632</JB_job_number>
-        <JAT_prio>0.50500</JAT_prio>
-        <JB_name>STDIN</JB_name>
-        <JB_owner>cpanse</JB_owner>
-        <state>qw</state>
-        <JB_submission_time>2011-11-26T08:41:59</JB_submission_time>
-        <queue_name></queue_name>
-        <slots>1</slots>
-      </job_list>
-    </job_info>
-  </job_info>
-"""
+        SAX `ContentHandler` implementation for parsing the output of
+        `qstat -u ... -xml`.
+        """
 
         # these XML elements yield information about a job
         JOB_ATTRIBUTES = [
@@ -268,31 +190,40 @@ Example:
                 return
 
 
-def running_and_pending_jobs():
-        jobs = Struct()
-        xml.sax.make_parser()
-        qstat_cmd = ['qstat', '-u', '*', '-xml']
+def _run_qstat(user='*'):
         try:
+                qstat_cmd = ['qstat', '-u', '*', '-xml']
                 qstat_process = subprocess.Popen(
                         qstat_cmd,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         shell=False)
-                qstat_stdout, stderr = qstat_process.communicate()
-                xml.sax.parseString(qstat_stdout, myQstatHandler(jobs))
+                stdout, stderr = qstat_process.communicate()
+                return stdout
         except subprocess.CalledProcessError, ex:
-                logging.error("Error running '%s': exit code %d",
-                              str.join(' ', qstat_cmd), ex.returncode)
-        except Exception, ex:
-                logging.error("Unexpected error: %s: %s",
-                              ex.__class__.__name__, str(ex))
+                logging.error("Error running '%s': '%s'; exit code %d",
+                              str.join(' ', qstat_cmd), stderr, ex.returncode)
                 raise
+
+
+def running_and_pending_jobs(qstat_xml_out=None):
+        """
+        Parse the output of a `qstat -u ... -xml` command and return a
+        pair `(running, pending)`, where each item is a list of
+        dictionary-like objects whose keys/attributes directly map the
+        XML contents.
+        """
+        if qstat_xml_out is None:
+                qstat_xml_out = _run_qstat()
+        jobs = Struct()
+        xml.sax.make_parser()
+        xml.sax.parseString(qstat_xml_out, _QstatXmlHandler(jobs))
         return (jobs.running, jobs.pending)
 
 
-if __name__ == '__main__':
-        jobs = running_and_pending_jobs()
-        print "Running jobs:"
-        print(jobs.running)
-        print "Pending jobs:"
-        print(jobs.pending)
+## main: run tests
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(name="ge_info",
+                    optionflags=doctest.NORMALIZE_WHITESPACE)
