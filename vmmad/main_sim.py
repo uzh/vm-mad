@@ -1,8 +1,6 @@
 #! /usr/bin/env python
-# -*- coding: latin1 -*-
+# -*- coding: utf-8 -*-
 # 
-
-
 """
 vm-mad simulator by  
     <riccardo.murri@uzh.ch>
@@ -32,8 +30,11 @@ Date-Modified = {2010-05-06 13:57:45}
 pages: 57-60
 
 """
-
-# Copyright (C) 2011 ETH Zurich and University of Zurich. All rights reserved.
+# Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
+#
+# Authors:
+#   Christian Panse <cp@fgcz.ethz.ch>
+#   Riccardo Murri <riccardo.murri@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,14 +48,15 @@ pages: 57-60
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
+# stdlib imports
 import os
 import sys
 import time
 import random
+
 
 def signal_handler(signal, frame):
     sys.exit(0)

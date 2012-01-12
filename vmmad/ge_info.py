@@ -1,18 +1,37 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-# Copyright (c) 2010, 2011 by Christian Panse <cp@fgcz.ethz.ch>
+"""
+Functions to get information about a Sun/Oracle/Open Grid Engine
+cluster status.
+"""
+# Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
 #
-# All rights reserved. This program is free software; you may
-# redistribute it and/or modify it under the same terms as Python itself.
-# Distributed without any warranties whatsoever.
+# Authors:
+#   Christian Panse <cp@fgcz.ethz.ch>
+#   Riccardo Murri <riccardo.murri@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+__docformat__ = 'reStructuredText'
+__version__ = '$Revision$'
+
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(name)s: [%(asctime)s] %(levelname)-8s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
-
+# stdlib imports
 from collections import Mapping, defaultdict
 import os
 import subprocess
@@ -21,16 +40,13 @@ import time
 import UserDict
 import xml.sax
 
-"""
-http://docs.python.org/library/curses.html
-http://svn.python.org/projects/python/trunk/Demo/curses/
-http://fgcz-data.uzh.ch/cgi-bin/fgcz_ge_info.py
-"""
+
+# see:
+# http://docs.python.org/library/curses.html
+# http://svn.python.org/projects/python/trunk/Demo/curses/
+# http://fgcz-data.uzh.ch/cgi-bin/fgcz_ge_info.py
 
 
-# In Python 2.7 still, `DictMixin` is an old-style class; thus, we need
-# to make `Struct` inherit from `object` otherwise we loose properties
-# when setting/pickling/unpickling
 class Struct(Mapping):
     """
     A `dict`-like object, whose keys can be accessed with the usual

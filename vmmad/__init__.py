@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-#
+# -*- coding: utf-8 -*-
 """
 Basic functions to operate on Virtual Machines in a set of clouds.
 
@@ -9,7 +9,11 @@ In more detail, `vmlibs` provides a functional interface to:
 * List VM images and their associated metadata.
 * List available machine types/sizes.
 """
-# Copyright (C) 2011 ETH Zurich and University of Zurich. All rights reserved.
+# Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
+#
+# Authors:
+#   Christian Panse <cp@fgcz.ethz.ch>
+#   Riccardo Murri <riccardo.murri@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

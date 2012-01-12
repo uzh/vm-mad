@@ -3,7 +3,11 @@
 """
 Launch compute node VMs on demand.
 """
-# Copyright (C) 2011 ETH Zurich and University of Zurich. All rights reserved.
+# Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
+#
+# Authors:
+#   Christian Panse <cp@fgcz.ethz.ch>
+#   Riccardo Murri <riccardo.murri@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +25,18 @@ __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
 
-import ge_info
-
+# stdlib imports
 import os
 import sys
+
+# apache libcloud
+from libcloud.compute.types import Provider
+from libcloud.compute.providers import get_driver
+import libcloud.security
+
+# local imports
+import ge_info
+
 
 
 ##
@@ -50,7 +62,7 @@ class Orchestrator(object):
         running, pending = self.sched_info_fn()
 
         for job in running:
-            # jobs that are running are no longer candidates
+            # running jobs are no longer candidates
             if job.job_number in self.candidates:
                 del self.candidates[job.job_number]
 
@@ -68,7 +80,11 @@ class Orchestrator(object):
 
     @abstractmethod
     def is_cloud_candidate(self, job):
-        """Return `True` if `job` can be run in a cloud node."""
+        """Return `True` if `job` can be run in a cloud node.
+
+        Override in subclasses to define a different cloud-burst
+        policy.
+        """
         return False
 
 
