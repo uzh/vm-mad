@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.DEBUG,
 import random
 import os
 import sys
-
+import argparse
 
 from orchestrator import Orchestrator
 from util import Struct
@@ -41,8 +41,8 @@ from util import Struct
 
 class OrchestratorSimulation(Orchestrator):
 
-    def __init__(self, max_vms, max_delta=1, max_idle=0, startup_delay=60,
-                 job_number=20, min_duration=1800, max_duration=3600):
+    def __init__(self, max_vms, max_delta, max_idle, startup_delay,
+                 job_number, min_duration, max_duration):
         Orchestrator.__init__(self, max_vms, max_delta)
 
         # no jobs are running at the onset, all are pending
@@ -145,6 +145,15 @@ class OrchestratorSimulation(Orchestrator):
                      self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
 
 
-
 if "__main__" == __name__:
-    OrchestratorSimulation(max_vms=10, max_idle=30, startup_delay=60, job_number=50, min_duration=30, max_duration=120).run(0)
+    parser = argparse.ArgumentParser(description='Simulates a cloud orchestrator')
+    parser.add_argument('--maxvms', metavar='N', dest="max_vms", default=10, type=int, help='Maximum number of VMs to be started, default is 10')
+    parser.add_argument('--maxdelta', metavar='N', dest="max_delta", default=1, type=int, help='To be defined')    
+    parser.add_argument('--maxidle', metavar='N', dest="max_idle", default=30, type=int, help='Maximum idle time before swithing off a VM, default is 30')
+    parser.add_argument('--sdelay', metavar='N', dest="startup_delay", default=60, type=int, help='Time delay before staring up a VM, default is 60')
+    parser.add_argument('--jnumber', metavar='N', dest="job_number", default=50, type=int, help='Number of job to be started, default is 50')
+    parser.add_argument('--mind', metavar='N', dest="min_duration", default=30, type=int, help='Lower bound for job\'s time execution, default is 30')
+    parser.add_argument('--maxd', metavar='N', dest="max_duration", default=120, type=int, help='Upper bound for job\'s time execution, default is 120')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.0')	    
+    args = parser.parse_args()
+    OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration).run(0)
