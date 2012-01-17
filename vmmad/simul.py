@@ -42,7 +42,7 @@ from util import Struct
 class OrchestratorSimulation(Orchestrator):
 
     def __init__(self, max_vms, max_delta, max_idle, startup_delay,
-                 job_number, min_duration, max_duration):
+                 job_number, min_duration, max_duration, output_file):
         Orchestrator.__init__(self, max_vms, max_delta)
 
         # no jobs are running at the onset, all are pending
@@ -53,7 +53,8 @@ class OrchestratorSimulation(Orchestrator):
 
         self.max_idle = max_idle
         self.startup_delay = startup_delay
-        
+        self.output_file = output_file 
+
         # info about running VMs
         self._vmid = 0
         self._started_vms = { }
@@ -135,7 +136,7 @@ class OrchestratorSimulation(Orchestrator):
             logging.info("No more jobs, stopping simulation.")
             sys.exit(0)
         
-        with open(("main_sim.txt"), "a") as output:
+        with open((self.output_file), "a") as output:
             output.write(
                 "%s,%s,%s,%s,%s\n"
                 #  no. of steps,      pending jobs,       running jobs,            started VMs,            idle VMs,
@@ -154,6 +155,7 @@ if "__main__" == __name__:
     parser.add_argument('--jnumber', metavar='N', dest="job_number", default=50, type=int, help='Number of job to be started, default is 50')
     parser.add_argument('--mind', metavar='N', dest="min_duration", default=30, type=int, help='Lower bound for job\'s time execution, default is 30')
     parser.add_argument('--maxd', metavar='N', dest="max_duration", default=120, type=int, help='Upper bound for job\'s time execution, default is 120')
+    parser.add_argument('--outf', metavar='String', dest="output_file", default="main_sim.txt", help='File name where the output of the simulation will be stored, default is main_sim.txt')
     parser.add_argument('--version', action='version', version='%(prog)s 1.0')	    
     args = parser.parse_args()
-    OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration).run(0)
+    OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration, args.output_file).run(0)
