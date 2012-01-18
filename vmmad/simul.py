@@ -8,6 +8,7 @@ Simulate an `Orchestrator` run given some parameters.
 # Authors:
 #   Christian Panse <cp@fgcz.ethz.ch>
 #   Riccardo Murri <riccardo.murri@gmail.com>
+#   Tyanko Aleksiev <tyanko.alexiev@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +23,7 @@ Simulate an `Orchestrator` run given some parameters.
 # limitations under the License.
 #
 __docformat__ = 'reStructuredText'
-__version__ = '$Revision$'
+__version__ = "$Revision$"
 
 
 import logging
@@ -148,14 +149,14 @@ class OrchestratorSimulation(Orchestrator):
 
 if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Simulates a cloud orchestrator')
-    parser.add_argument('--maxvms', metavar='N', dest="max_vms", default=10, type=int, help='Maximum number of VMs to be started, default is 10')
-    parser.add_argument('--maxdelta', metavar='N', dest="max_delta", default=1, type=int, help='To be defined')    
-    parser.add_argument('--maxidle', metavar='N', dest="max_idle", default=30, type=int, help='Maximum idle time before swithing off a VM, default is 30')
-    parser.add_argument('--sdelay', metavar='N', dest="startup_delay", default=60, type=int, help='Time delay before staring up a VM, default is 60')
-    parser.add_argument('--jnumber', metavar='N', dest="job_number", default=50, type=int, help='Number of job to be started, default is 50')
-    parser.add_argument('--mind', metavar='N', dest="min_duration", default=30, type=int, help='Lower bound for job\'s time execution, default is 30')
-    parser.add_argument('--maxd', metavar='N', dest="max_duration", default=120, type=int, help='Upper bound for job\'s time execution, default is 120')
-    parser.add_argument('--outf', metavar='String', dest="output_file", default="main_sim.txt", help='File name where the output of the simulation will be stored, default is main_sim.txt')
-    parser.add_argument('--version', action='version', version='%(prog)s 1.0')	    
+    parser.add_argument('--max-vms', '-mv', metavar='N', dest="max_vms", default=10, type=int, help="Maximum number of VMs to be started, default is %(default)s")
+    parser.add_argument('--max-delta', '-md', metavar='N', dest="max_delta", default=1, type=int, help="To be defined")    
+    parser.add_argument('--max-idle', '-mi', metavar='NUM_SECS', dest="max_idle", default=30, type=int, help="Maximum idle time (in seconds) before swithing off a VM, default is %(default)s")
+    parser.add_argument('--startup-delay', '-S', metavar='NUM_SECS', dest="startup_delay", default=60, type=int, help="Time (in seconds) delay before staring up a VM, default is %(default)s")
+    parser.add_argument('--job-number', '-jn', metavar='N', dest="job_number", default=50, type=int, help="Number of job to be started, default is %(default)s")
+    parser.add_argument('--min-duration', '-mind', metavar='NUM_SECS', dest="min_duration", default=30, type=int, help="Lower bound for job's time (in seconds) execution, default is %(default)s")
+    parser.add_argument('--max-duration', '-maxd', metavar='NUM_SECS', dest="max_duration", default=120, type=int, help="Upper bound for job's time (in seconds)  execution, default is %(default)s")
+    parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s")
+    parser.add_argument('--version', '-V', action='version', version="%(prog)s is on version: 1.0")	    
     args = parser.parse_args()
     OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration, args.output_file).run(0)
