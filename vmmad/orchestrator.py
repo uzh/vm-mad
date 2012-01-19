@@ -36,13 +36,51 @@ import time
 #import libcloud.security
 
 # local imports
-import ge_info
 from util import abstractmethod, Struct
+
+
+class JobInfo(Struct):
+    """
+    Record data about a job in the batch system.
+
+    A `JobInfo` object is basically a free-form record, but the
+    constructor still enforces the following constraints:
+
+    * There must be a non-empty `jobid` attribute.
+
+    Running jobs have a (string) `exec_node_name` attribute, which is
+    used to match the associated VM (if any).
+    """
+
+    def __init__(self, *args, **kwargs):
+        Struct.__init__(self, *args, **kwargs)
+        # ensure required fields are there
+        assert 'jobid' in self, ("JobInfo object %s missing required field 'vmid'" % self)
+
+    def is_running(self):
+        """
+        Return `True` if the job is running.
+
+        A running job is guaranteed to have a valid `exec_node_name`
+        attribute.
+        """
+        return 'exec_node_name' in self
 
 
 class VmInfo(Struct):
     """
     Record data about a started VM instance.
+
+    A `VmInfo` object is mostly a free-form record, but the
+    constructor still enforces the following constraints:
+
+    * There must be a non-empty `vmid` attribute.
+
+    .. note::
+
+      The `vmid` attribute must be unique among all `VmInfo` instances!
+
+      **FIXME:** This is not currently enforced by the constructor.
     """
 
     def __init__(self, *args, **kwargs):
@@ -101,13 +139,13 @@ class Orchestrator(object):
 
         for job in running:
             # running jobs are no longer candidates
-            if job.job_number in self.candidates:
-                del self.candidates[job.job_number]
+            if job.jobid in self.candidates:
+                del self.candidates[job.jobid]
 
         for job in pending:
             # update candidates' information
             if self.is_cloud_candidate(job):
-                self.candidates[job.job_number] = job
+                self.candidates[job.jobid] = job
 
     def get_sched_info(self):
         """

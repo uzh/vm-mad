@@ -31,13 +31,13 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
+from copy import copy
 import random
 import os
 import sys
 import argparse
 
-from orchestrator import Orchestrator, VmInfo
-from util import Struct
+from orchestrator import Orchestrator, JobInfo, VmInfo
 
 
 class OrchestratorSimulation(Orchestrator):
@@ -48,8 +48,8 @@ class OrchestratorSimulation(Orchestrator):
 
         # no jobs are running at the onset, all are pending
         self._running = [ ]
-        self._pending = [ Struct(job_number=random.randint(1,job_number*10),
-                                 duration=random.randint(min_duration, max_duration))
+        self._pending = [ JobInfo(jobid=random.randint(1,job_number*10),
+                                  duration=random.randint(min_duration, max_duration))
                           for _ in range(0,job_number) ]
 
         self.max_idle = max_idle
@@ -66,31 +66,28 @@ class OrchestratorSimulation(Orchestrator):
         # do regular work
         Orchestrator.update_job_status(self)
         # simulate job run time passing and stop finished jobs
-        done = [ ]
-        for job in self._running:
+        for job in copy(self._running):
             job.duration -= 1
             if job.duration <= 0:
                 vm = job.vm
-                vm.jobs.remove(job.job_number)
-                done.append(job)
+                vm.jobs.remove(job.jobid)
+                self._running.remove(job)
                 self._idle_vm_count += 1
                 logging.info("Job %s just finished; VM %s is now idle.",
-                             job.job_number, vm.vmid)
-        for job in done:
-            self._running.remove(job)
+                             job.jobid, vm.vmid)
         # simulate SGE scheduler starting a new job
         for vm in self._started_vms:
             if vm.last_idle > 0:
                 if not self._pending:
                     break
                 job = self._pending.pop()
-                vm.jobs.append(job.job_number)
+                vm.jobs.add(job.jobid)
                 job.vm = vm
                 vm.last_idle = 0
                 if self._idle_vm_count > 0:
                     self._idle_vm_count -= 1
                 self._running.append(job)
-                logging.info("Job %s just started running on VM %s.", job.job_number, vm.vmid)
+                logging.info("Job %s just started running on VM %s.", job.jobid, vm.vmid)
 
     def get_sched_info(self):
         return (self._running, self._pending)
@@ -106,7 +103,7 @@ class OrchestratorSimulation(Orchestrator):
                       been_running=0,
                       total_idle=0,
                       last_idle=(-self.startup_delay),
-                      jobs=[])
+                      jobs=set())
 
     def update_vm_status(self):
         for vm in self._started_vms:

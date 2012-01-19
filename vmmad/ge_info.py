@@ -41,6 +41,7 @@ import UserDict
 import xml.sax
 
 # local imports
+from orchestrator import JobInfo
 from util import Struct
 
 # see:
@@ -99,7 +100,7 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 self._level += 1
                 if name == 'job_list':
                         assert 'state' in attrs
-                        self.current = Struct()
+                        self.current = JobInfo()
                         self.current_job_state = attrs['state']
 
                 ## for other elements, just reset `value` so we can
