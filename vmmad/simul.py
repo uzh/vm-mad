@@ -49,6 +49,7 @@ class OrchestratorSimulation(Orchestrator):
         # no jobs are running at the onset, all are pending
         self._running = [ ]
         self._pending = [ JobInfo(jobid=random.randint(1,job_number*10),
+                                  state=JobInfo.PENDING,
                                   duration=random.randint(min_duration, max_duration))
                           for _ in range(0,job_number) ]
 
@@ -90,7 +91,7 @@ class OrchestratorSimulation(Orchestrator):
                 logging.info("Job %s just started running on VM %s.", job.jobid, vm.vmid)
 
     def get_sched_info(self):
-        return (self._running, self._pending)
+        return (self._running + self._pending)
 
     def is_cloud_candidate(self, job):
         # every job is a candidate in this simulation

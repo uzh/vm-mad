@@ -52,10 +52,25 @@ class JobInfo(Struct):
     used to match the associated VM (if any).
     """
 
+    # job states
+    PENDING = 1
+    RUNNING = 2
+    FINISHED = 3
+    OTHER = 0
+
     def __init__(self, *args, **kwargs):
         Struct.__init__(self, *args, **kwargs)
         # ensure required fields are there
-        assert 'jobid' in self, ("JobInfo object %s missing required field 'vmid'" % self)
+        assert 'jobid' in self, ("JobInfo object %s missing required field 'jobid'" % self)
+        assert 'state' in self, ("JobInfo object %s missing required field 'state'" % self)
+        assert self.state in [
+            JobInfo.PENDING,
+            JobInfo.RUNNING,
+            JobInfo.FINISHED,
+            JobInfo.OTHER
+            ], \
+            ("Invalid state '%s' for JobInfo object %s" % (self.state, self))
+
 
     def is_running(self):
         """
@@ -64,7 +79,14 @@ class JobInfo(Struct):
         A running job is guaranteed to have a valid `exec_node_name`
         attribute.
         """
-        return 'exec_node_name' in self
+        if self.state == JobInfo.RUNNING:
+            assert 'exec_node_name' in self, \
+                   ("JobInfo object %s marked RUNNING"
+                    " but missing required field 'exec_node_name'"
+                    % (self,))
+            return True
+        else:
+            return False
 
 
 class VmInfo(Struct):
@@ -136,14 +158,14 @@ class Orchestrator(object):
 
 
     def update_job_status(self):
-        running, pending = self.get_sched_info()
+        jobs = self.get_sched_info()
 
-        for job in running:
+        for job in (j for j in jobs if j.state == JobInfo.RUNNING):
             # running jobs are no longer candidates
             if job.jobid in self.candidates:
                 del self.candidates[job.jobid]
 
-        for job in pending:
+        for job in (j for j in jobs if j.state == JobInfo.PENDING):
             # update candidates' information
             if self.is_cloud_candidate(job):
                 self.candidates[job.jobid] = job
@@ -152,8 +174,8 @@ class Orchestrator(object):
     @abstractmethod
     def get_sched_info(self):
         """
-        Query the job scheduler and return a pair (running, pending)
-        where each item in the pair is a list of jobs.
+        Query the job scheduler and return a list of `JobInfo` objects
+        representing the jobs in the batch queue system.
         """
         pass
 

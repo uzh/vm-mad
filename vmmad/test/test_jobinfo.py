@@ -34,11 +34,22 @@ class TestJobInfo(unittest.TestCase):
     def test_required_attributes(self):
         # should raise assertion since `jobid` is required
         self.assertRaises(AssertionError, JobInfo, ())
+        self.assertRaises(AssertionError, JobInfo, state=JobInfo.PENDING)
+        # should raise assertion since `state` is required
+        self.assertRaises(AssertionError, JobInfo, jobid=1)
+        # should raise no exception
+        self.assertIsInstance(JobInfo(jobid=1, state=JobInfo.RUNNING), JobInfo)
+
+
+    def test_invalid_state(self):
+        # should raise as `state` is not `JobInfo.XXX`
+        self.assertRaises(AssertionError, JobInfo, jobid=1, state='whatever')
+        
 
     def test_is_running(self):
-        job1 = JobInfo(jobid=1, exec_node_name='compute-0-0')
+        job1 = JobInfo(jobid=1, state=JobInfo.RUNNING, exec_node_name='compute-0-0')
         self.assertTrue(job1.is_running())
-        job2 = JobInfo(jobid=2)
+        job2 = JobInfo(jobid=2, state=JobInfo.PENDING)
         self.assertFalse(job2.is_running())
 
 

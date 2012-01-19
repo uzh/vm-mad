@@ -89,10 +89,9 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                         # ...and by default, keep field name unchanged
                         return field
 
+
         def __init__(self, dest):
-                self.dest = dest
-                self.running = [ ]
-                self.pending = [ ]
+                self.jobs = dest
                 self.value = [ ]
                 self._level = 0
 
@@ -100,7 +99,7 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 self._level += 1
                 if name == 'job_list':
                         assert 'state' in attrs
-                        self.current = JobInfo()
+                        self.current = JobInfo(jobid='invalid', state=JobInfo.OTHER)
                         self.current_job_state = attrs['state']
 
                 ## for other elements, just reset `value` so we can
@@ -117,20 +116,12 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 self._level -= 1
 
                 if 0 == self._level:
-                        # end of XML, output data structure
-                        self.dest.running = self.running
-                        self.dest.pending = self.pending
+                        # end of XML
                         return
 
                 if 'job_list' == name:
                         # end of job description, commit
-                        if 'running' == self.current_job_state:
-                                self.running.append(self.current)
-                        elif 'pending' == self.current_job_state:
-                                self.pending.append(self.current)
-                        else:
-                                raise AssertionError("Unexpected job state '%s'"
-                                                     % self.current_job_state)
+                        self.jobs.append(self.current)
                         return
 
                 # process job-level elements
@@ -145,6 +136,18 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                                 # raise an appropriate exception if this is not the case!
                                 at = value_str.index('@') + 1
                                 self.current['exec_node_name'] = value_str[at:]
+                elif 'state' == name:
+                        # the GE state letters are explained in the `qstat` man page
+                        if (('E' in value_str)
+                            or ('h' in value_str)
+                            or ('T' in value_str) 
+                            or ('s' in value_str) or ('S' in value_str)
+                            or ('d' in value_str)):
+                                self.current.state = JobInfo.OTHER
+                        elif 'q' in value_str:
+                                self.current.state = JobInfo.PENDING
+                        elif 'r' in value_str:
+                                self.current.state = JobInfo.RUNNING
                 elif name in self.JOB_ATTRIBUTES:
                         # convert each XML attribute to a Python representation
                         # (defaulting to `str`, see CONVERT above)
@@ -169,7 +172,7 @@ def _run_qstat(user='*'):
                 raise
 
 
-def running_and_pending_jobs(qstat_xml_out=None):
+def get_sched_info(qstat_xml_out=None):
         """
         Parse the output of a `qstat -u ... -xml` command and return a
         pair `(running, pending)`, where each item is a list of
@@ -178,10 +181,10 @@ def running_and_pending_jobs(qstat_xml_out=None):
         """
         if qstat_xml_out is None:
                 qstat_xml_out = _run_qstat()
-        jobs = Struct()
+        jobs = [ ]
         xml.sax.make_parser()
         xml.sax.parseString(qstat_xml_out, _QstatXmlHandler(jobs))
-        return (jobs.running, jobs.pending)
+        return jobs
 
 
 ## main: run tests
