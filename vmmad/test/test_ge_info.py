@@ -82,7 +82,7 @@ class TestGEInfo(unittest.TestCase):
         (running, pending) = ge_info.running_and_pending_jobs(EXAMPLE_QSTAT_XML_OUTPUT)
         self.assertEqual(len(running), 2)
         self.assertEqual(len(pending), 1)
-
+ 
     def test_running_job_attribute_types(self):
         (running, pending) = ge_info.running_and_pending_jobs(EXAMPLE_QSTAT_XML_OUTPUT)
         for job in running:

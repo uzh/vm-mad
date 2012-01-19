@@ -23,12 +23,12 @@ Simulate an `Orchestrator` run given some parameters.
 # limitations under the License.
 #
 __docformat__ = 'reStructuredText'
-__version__ = "$Revision$"
+__version__ = "1.0dev (SVN $Revision$)"
 
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: [%(asctime)s] %(levelname)-8s: %(message)s',
+                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
 import random
@@ -36,7 +36,7 @@ import os
 import sys
 import argparse
 
-from orchestrator import Orchestrator
+from orchestrator import Orchestrator, VmInfo
 from util import Struct
 
 
@@ -58,7 +58,6 @@ class OrchestratorSimulation(Orchestrator):
 
         # info about running VMs
         self._vmid = 0
-        self._started_vms = { }
         self._idle_vm_count = 0
 
         self._steps = 0
@@ -75,12 +74,12 @@ class OrchestratorSimulation(Orchestrator):
                 vm.jobs.remove(job.job_number)
                 done.append(job)
                 self._idle_vm_count += 1
-                logging.info("Job %s just finished; VM %s is now idle.", job.job_number, vm.vmid)
+                logging.info("Job %s just finished; VM %s is now idle.",
+                             job.job_number, vm.vmid)
         for job in done:
             self._running.remove(job)
         # simulate SGE scheduler starting a new job
-        for vmid in self._started_vms:
-            vm = self._started_vms[vmid]
+        for vm in self._started_vms:
             if vm.last_idle > 0:
                 if not self._pending:
                     break
@@ -103,21 +102,23 @@ class OrchestratorSimulation(Orchestrator):
     def start_vm(self):
         self._vmid += 1
         logging.info("Started VM %s", self._vmid)
-        return Struct(vmid=self._vmid, been_running=0, total_idle=0, last_idle=(-self.startup_delay), jobs=[])
+        return VmInfo(vmid=self._vmid,
+                      been_running=0,
+                      total_idle=0,
+                      last_idle=(-self.startup_delay),
+                      jobs=[])
 
     def update_vm_status(self):
-        for vmid in self._started_vms:
-            self._started_vms[vmid].been_running += 1
-            if not self._started_vms[vmid].jobs:
-                self._started_vms[vmid].total_idle += 1
-                self._started_vms[vmid].last_idle += 1
+        for vm in self._started_vms:
+            vm.been_running += 1
+            if not vm.jobs:
+                vm.total_idle += 1
+                vm.last_idle += 1
 
-    def stop_vm(self, vmid):
+    def stop_vm(self, vm):
         logging.info("Stopping VM %s: has run for %d steps, been idle for %d of them",
-                     vmid,
-                     self._started_vms[vmid].been_running,
-                     self._started_vms[vmid].total_idle)
-        if self._started_vms[vmid].last_idle > 0:
+                     vm.vmid, vm.been_running, vm.total_idle)
+        if vm.last_idle > 0:
             self._idle_vm_count -= 1
         # nothing else to do, since the VM object is deleted by the
         # main `Orchestrator` class.
@@ -127,8 +128,8 @@ class OrchestratorSimulation(Orchestrator):
         if len(self._pending) > 2 * len(self._running):
             return True
 
-    def can_vm_be_stopped(self, vmid):
-        if self._started_vms[vmid].last_idle > self.max_idle:
+    def can_vm_be_stopped(self, vm):
+        if vm.last_idle > self.max_idle:
             return True
 
     def before(self):
@@ -157,6 +158,7 @@ if "__main__" == __name__:
     parser.add_argument('--min-duration', '-mind', metavar='NUM_SECS', dest="min_duration", default=30, type=int, help="Lower bound for job's time (in seconds) execution, default is %(default)s")
     parser.add_argument('--max-duration', '-maxd', metavar='NUM_SECS', dest="max_duration", default=120, type=int, help="Upper bound for job's time (in seconds)  execution, default is %(default)s")
     parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s")
-    parser.add_argument('--version', '-V', action='version', version="%(prog)s is on version: 1.0")	    
+    parser.add_argument('--version', '-V', action='version',
+                        version=("%(prog)s version " + __version__))
     args = parser.parse_args()
     OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration, args.output_file).run(0)

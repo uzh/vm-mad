@@ -37,7 +37,22 @@ import time
 
 # local imports
 import ge_info
-from util import abstractmethod
+from util import abstractmethod, Struct
+
+
+class VmInfo(Struct):
+    """
+    Record data about a started VM instance.
+    """
+
+    def __init__(self, *args, **kwargs):
+        Struct.__init__(self, *args, **kwargs)
+        # ensure required fields are there
+        assert 'vmid' in self, ("VmInfo object %s missing required field 'vmid'" % self)
+    
+    def __hash__(self):
+        """Use the VM id as unique hash value."""
+        return hash(self.vmid)
 
 
 ## the main class of this file
@@ -75,8 +90,8 @@ class Orchestrator(object):
         # max number of VMs that can be started each cycle
         self.max_delta = max_delta
         
-        # map VM IDs to actual VM objects
-        self._started_vms = { }
+        # list of VMs controlled by this `Orchestrator` instance
+        self._started_vms = set()
 
         # mapping jobid to job informations
         self.candidates = { }
@@ -96,8 +111,8 @@ class Orchestrator(object):
 
     def get_sched_info(self):
         """
-        A function returning a pair (running, pending)
-        of two lists of running/pending jobs.
+        Query the job scheduler and return a pair (running, pending)
+        where each item in the pair is a list of jobs.
         """
         return ge_info.running_and_pending_jobs()
 
@@ -131,17 +146,17 @@ class Orchestrator(object):
         pass
 
     @abstractmethod
-    def can_vm_be_stopped(self, vmid):
-        """Return `True` if the VM identified by `vmid` is no longer
+    def can_vm_be_stopped(self, vm):
+        """Return `True` if the VM identified by `vm` is no longer
         needed and can be stopped.
         """
         pass
 
     @abstractmethod
-    def stop_vm(self, vmid):
+    def stop_vm(self, vm):
         """Virtual method for stopping a VM.
 
-        Takes a `vmid` argument, which is the return value of a
+        Takes a `vm` argument, which is the return value of a
         previous `start_vm` call.
         """
         pass
@@ -177,17 +192,14 @@ class Orchestrator(object):
             if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
                 new_vm = self.start_vm()
                 if new_vm is not None:
-                    self._started_vms[new_vm.vmid] = new_vm
+                    self._started_vms.add(new_vm)
 
             # stop VMs that are no longer needed
             to_stop = [ ]
-            for vmid in self._started_vms:
-                if self.can_vm_be_stopped(vmid):
-                    if self.stop_vm(vmid):
-                        to_stop.append(vmid)
-            for vmid in to_stop:
-                        del self._started_vms[vmid]
-                
+            for vm in frozenset(self._started_vms):
+                if self.can_vm_be_stopped(vm):
+                    if self.stop_vm(vm):
+                        self._started_vms.remove(vm)
 
             self.after()
 
