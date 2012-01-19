@@ -87,36 +87,40 @@ class TestGEInfo(unittest.TestCase):
         (running, pending) = ge_info.running_and_pending_jobs(EXAMPLE_QSTAT_XML_OUTPUT)
         for job in running:
             self.assertTrue(isinstance(job.JAT_prio, float))
-            self.assertTrue(isinstance(job.JB_job_number, int))
+            self.assertTrue(isinstance(job.jobid, int))
             self.assertTrue(isinstance(job.JB_name, str))
             self.assertTrue(isinstance(job.queue_name, str))
+            self.assertTrue(isinstance(job.exec_node_name, str))
             self.assertTrue(isinstance(job.state, str))
 
     def test_running_job_attribute_values(self):
         (running, pending) = ge_info.running_and_pending_jobs(EXAMPLE_QSTAT_XML_OUTPUT)
         job = running[0]
         self.assertEqual(job.JAT_prio, 0.505)
-        self.assertEqual(job.JB_job_number, 389524)
+        self.assertEqual(job.jobid, 389524)
         self.assertEqual(job.JB_name, 'QRLOGIN')
         self.assertEqual(job.queue_name, 'cloud@fgcz-cloud-002')
+        self.assertEqual(job.exec_node_name, 'fgcz-cloud-002')
         self.assertEqual(job.state, 'r')
 
     def test_pending_job_attribute_types(self):
         (running, pending) = ge_info.running_and_pending_jobs(EXAMPLE_QSTAT_XML_OUTPUT)
         for job in pending:
             self.assertTrue(isinstance(job.JAT_prio, float))
-            self.assertTrue(isinstance(job.JB_job_number, int))
+            self.assertTrue(isinstance(job.jobid, int))
             self.assertTrue(isinstance(job.JB_name, str))
             self.assertTrue(isinstance(job.state, str))
             self.assertTrue(job.queue_name is None)
+            self.assertTrue(job.exec_node_name is None)
 
     def test_pending_job_attribute_values(self):
         (running, pending) = ge_info.running_and_pending_jobs(EXAMPLE_QSTAT_XML_OUTPUT)
         job = pending[0]
         self.assertEqual(job.JAT_prio, 0.505)
-        self.assertEqual(job.JB_job_number, 389632)
+        self.assertEqual(job.jobid, 389632)
         self.assertEqual(job.JB_name, 'STDIN')
         self.assertEqual(job.queue_name, None)
+        self.assertEqual(job.exec_node_name, None)
         self.assertEqual(job.state, 'qw')
 
 

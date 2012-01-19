@@ -55,7 +55,7 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
         `qstat -u ... -xml`.
         """
 
-        # these XML elements yield information about a job
+        # XML attributes *not* in this list are ignored
         JOB_ATTRIBUTES = [
                 'JB_job_number',
                 'JAT_prio',
@@ -75,6 +75,18 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 JAT_prio=float,
                 slots=int,
                 )
+
+        # rename fields to adhere to what the `JobInfo` ctor expects
+        @staticmethod
+        def rename(field):
+                try:
+                        # map field names according to this...
+                        return {
+                                'JB_job_number':'jobid',
+                                }[field]
+                except KeyError:
+                        # ...and by default, keep field name unchanged
+                        return field
 
         def __init__(self, dest):
                 self.dest = dest
@@ -125,12 +137,17 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 if 'queue_name' == name:
                         if '' == value_str:
                                 self.current['queue_name'] = None
+                                self.current['exec_node_name'] = None
                         else:
                                 self.current['queue_name'] = value_str
+                                # FIXME: GE's queue names have the form queue@hostname;
+                                # raise an appropriate exception if this is not the case!
+                                at = value_str.index('@') + 1
+                                self.current['exec_node_name'] = value_str[at:]
                 elif name in self.JOB_ATTRIBUTES:
                         # convert each XML attribute to a Python representation
                         # (defaulting to `str`, see CONVERT above)
-                        self.current[name] = self.CONVERT[name](value_str)
+                        self.current[self.rename(name)] = self.CONVERT[name](value_str)
 
                 return
 
