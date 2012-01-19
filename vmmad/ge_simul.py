@@ -60,7 +60,7 @@ class GEOrchestratorSimulation(Orchestrator):
                        for filename in os.listdir(qstat_xml_dir)
                        if filename.endswith('.xml'))))
         self.__jobs = [ ]
-
+        self.__starting = 0
         
     def get_sched_info(self):
         # read data from next file
@@ -72,12 +72,13 @@ class GEOrchestratorSimulation(Orchestrator):
 
 
     def is_cloud_candidate(self, job):
-        # XXX: only jobs submitted to the "cloud@" queue are candidates
+        # XXX: only jobs submitted to the "cloud@" queue are candidates?
         return True
 
 
     def start_vm(self):
         logging.warning("Would start a new VM (if this were a real Orchestrator)")
+        self.__starting += 1
         # ...but fail!
         return None
 
@@ -108,6 +109,9 @@ class GEOrchestratorSimulation(Orchestrator):
             logging.info("No more data files, stopping simulation.")
             sys.exit(0)
 
+        # reset counter of "starting" VMs
+        self.__starting = 0
+
     def after(self):
         running = [job for job in self.__jobs if job.state == JobInfo.RUNNING]
         pending = [job for job in self.__jobs if job.state == JobInfo.PENDING]
@@ -115,11 +119,11 @@ class GEOrchestratorSimulation(Orchestrator):
         with open((self.output_file), "a") as output:
             output.write(
                 "%s,%s,%s,%s,%s\n"
-                #no. of steps, pending jobs, running jobs, started VMs, idle VMs,
-                %(self._steps, len(pending), len(running),      0,           0))
+                #no. of steps, pending jobs, running jobs, started VMs,     idle VMs,
+                %(self._steps, len(pending), len(running), self.__starting, 0))
 
-        logging.info("At step %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
-                     self._steps, len(pending),    len(running),    0,              0)
+        logging.info("At step %d: pending jobs %d, running jobs %d, starting VMs %d, idle VMs %d",
+                     self._steps, len(pending),    len(running),    self.__starting, 0)
 
 
 if "__main__" == __name__:
