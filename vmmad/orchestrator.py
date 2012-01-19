@@ -134,6 +134,7 @@ class Orchestrator(object):
         # mapping jobid to job informations
         self.candidates = { }
 
+
     def update_job_status(self):
         running, pending = self.get_sched_info()
 
@@ -147,12 +148,15 @@ class Orchestrator(object):
             if self.is_cloud_candidate(job):
                 self.candidates[job.jobid] = job
 
+
+    @abstractmethod
     def get_sched_info(self):
         """
         Query the job scheduler and return a pair (running, pending)
         where each item in the pair is a list of jobs.
         """
-        return ge_info.running_and_pending_jobs()
+        pass
+
 
     @abstractmethod
     def is_cloud_candidate(self, job):
@@ -174,6 +178,7 @@ class Orchestrator(object):
         if len(self.candidates) > 0:
             return True
 
+
     @abstractmethod
     def start_vm(self):
         """Virtual method for starting a new VM.
@@ -183,12 +188,14 @@ class Orchestrator(object):
         """
         pass
 
+
     @abstractmethod
     def can_vm_be_stopped(self, vm):
         """Return `True` if the VM identified by `vm` is no longer
         needed and can be stopped.
         """
         pass
+
 
     @abstractmethod
     def stop_vm(self, vm):
@@ -233,7 +240,6 @@ class Orchestrator(object):
                     self._started_vms.add(new_vm)
 
             # stop VMs that are no longer needed
-            to_stop = [ ]
             for vm in frozenset(self._started_vms):
                 if self.can_vm_be_stopped(vm):
                     if self.stop_vm(vm):
