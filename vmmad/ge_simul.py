@@ -36,7 +36,7 @@ import random
 import os
 import sys
 import argparse
-
+import gzip 
 
 from orchestrator import Orchestrator, JobInfo, VmInfo
 import ge_info
@@ -51,22 +51,28 @@ class GEOrchestratorSimulation(Orchestrator):
 
         self.max_idle = max_idle
         self.startup_delay = startup_delay
-        self.output_file = output_file 
+        self.output_file = output_file
 
         # load data files
         self.qstat_xml_files = list(
             reversed(
                 sorted(os.path.join(qstat_xml_dir, filename)
                        for filename in os.listdir(qstat_xml_dir)
-                       if filename.endswith('.xml'))))
+                       if (filename.endswith('.xml') or filename.endswith('.gz')) )))
+ 		        
         self.__jobs = [ ]
         self.__starting = 0
         
     def get_sched_info(self):
         # read data from next file
         filename = self.qstat_xml_files.pop()
-        with open(filename, 'r') as xml_file:
-            xml_data = xml_file.read()
+	if filename.endswith('.gz'):
+                with gzip.open(filename, 'r') as xml_file:    
+            		xml_data = xml_file.read()
+	else:
+		with open(filename, 'r') as xml_file:
+			xml_data = xml_file.read()
+
         self.__jobs = ge_info.get_sched_info(xml_data)
         return self.__jobs
 
