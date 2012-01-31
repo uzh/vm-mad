@@ -25,6 +25,7 @@ __version__ = '$Revision$'
 
 
 # stdlib imports
+from abc import abstractmethod
 from copy import copy
 
 # libcloud imports
@@ -34,7 +35,6 @@ import libcloud.compute.providers
 # local imports
 from vmmad import log
 from orchestrator import VmInfo
-from util import abstractmethod
 
 
 class Cloud:

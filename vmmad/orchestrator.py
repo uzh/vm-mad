@@ -26,13 +26,14 @@ __version__ = '$Revision$'
 
 
 # stdlib imports
+from abc import abstractmethod
 import os
 import sys
 import time
 
 # local imports
 from vmmad import log
-from util import abstractmethod, Struct
+from util import Struct
 
 
 class JobInfo(Struct):
