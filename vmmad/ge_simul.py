@@ -26,11 +26,7 @@ __docformat__ = 'reStructuredText'
 __version__ = "1.0dev (SVN $Revision$)"
 
 
-import logging
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-
+# stdlib imports
 from copy import copy
 import random
 import os
@@ -38,6 +34,8 @@ import sys
 import argparse
 import gzip 
 
+# local imports
+from vmmad import log
 from cloud import Cloud
 from orchestrator import Orchestrator, JobInfo, VmInfo
 import ge_info
@@ -71,7 +69,7 @@ class GEOrchestratorSimulation(Orchestrator, Cloud):
     def before(self):
         self._steps += 1
         if 0 == len(self.qstat_xml_files):
-            logging.info("No more data files, stopping simulation.")
+            log.info("No more data files, stopping simulation.")
             sys.exit(0)
 
         # reset counter of "starting" VMs
@@ -87,7 +85,7 @@ class GEOrchestratorSimulation(Orchestrator, Cloud):
                 #no. of steps, pending jobs, running jobs, started VMs,     idle VMs,
                 %(self._steps, len(pending), len(running), self.__starting, 0))
 
-        logging.info("At step %d: pending jobs %d, running jobs %d, starting VMs %d, idle VMs %d",
+        log.info("At step %d: pending jobs %d, running jobs %d, starting VMs %d, idle VMs %d",
                      self._steps, len(pending),    len(running),    self.__starting, 0)
 
 
@@ -128,7 +126,7 @@ class GEOrchestratorSimulation(Orchestrator, Cloud):
     ## (fake) cloud provider interface
     ##
     def start_vm(self, vm):
-        logging.warning("Would start a new VM (if this were a real Orchestrator)")
+        log.warning("Would start a new VM (if this were a real Orchestrator)")
         self.__starting += 1
         # ...but fail!
         vm.state = VmInfo.DOWN
@@ -139,7 +137,7 @@ class GEOrchestratorSimulation(Orchestrator, Cloud):
 
 
     def stop_vm(self, vm):
-        logging.error("Request to stop VM %s,"
+        log.error("Request to stop VM %s,"
                       " which was never started in the first place",
                       vm.vmid)
         return False

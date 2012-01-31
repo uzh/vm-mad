@@ -26,18 +26,15 @@ __docformat__ = 'reStructuredText'
 __version__ = "1.0dev (SVN $Revision$)"
 
 
-import logging
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-log = logging.getLogger(__name__)
-
+# stdlib imports
 from copy import copy
 import random
 import os
 import sys
 import argparse
 
+# local imports
+from vmmad import log
 import cloud
 from orchestrator import Orchestrator, JobInfo, VmInfo
 
@@ -80,7 +77,7 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
                 vm.jobs.remove(job.jobid)
                 self._running.remove(job)
                 self._idle_vm_count += 1
-                logging.info("Job %s just finished; VM %s is now idle.",
+                log.info("Job %s just finished; VM %s is now idle.",
                              job.jobid, vm.vmid)
         # simulate SGE scheduler starting a new job
         for vm in self._started_vms:
@@ -94,12 +91,12 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
                 if self._idle_vm_count > 0:
                     self._idle_vm_count -= 1
                 self._running.append(job)
-                logging.info("Job %s just started running on VM %s.", job.jobid, vm.vmid)
+                log.info("Job %s just started running on VM %s.", job.jobid, vm.vmid)
 
     def before(self):
         self._steps += 1
         if len(self._pending) == 0 and len(self._running) == 0:
-            logging.info("No more jobs, stopping simulation.")
+            log.info("No more jobs, stopping simulation.")
             sys.exit(0)
         
         with open((self.output_file), "a") as output:
@@ -108,7 +105,7 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
                 #  no. of steps,      pending jobs,       running jobs,            started VMs,            idle VMs,
                 %(self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
 
-        logging.info("At step %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
+        log.info("At step %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
                      self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
 
 
@@ -154,7 +151,7 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
                 vm.last_idle += 1
 
     def stop_vm(self, vm):
-        logging.info("Stopping VM %s: has run for %d steps, been idle for %d of them",
+        log.info("Stopping VM %s: has run for %d steps, been idle for %d of them",
                      vm.vmid, vm.been_running, vm.total_idle)
         cloud.DummyCloud.stop_vm(self, vm)
         if vm.last_idle > 0:

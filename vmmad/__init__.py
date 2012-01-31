@@ -24,3 +24,11 @@ Cloud-bursting of a batch cluster into a cloud.
 __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
+
+# set up default logging
+import logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+log = logging.getLogger(__package__)
+

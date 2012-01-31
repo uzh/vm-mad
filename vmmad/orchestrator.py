@@ -25,18 +25,13 @@ __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
 
-import logging
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-log = logging.getLogger(__name__)
-
 # stdlib imports
 import os
 import sys
 import time
 
 # local imports
+from vmmad import log
 from util import abstractmethod, Struct
 
 
@@ -236,7 +231,7 @@ class Orchestrator(object):
                 self.cloud.start_vm(new_vm)
                 if new_vm.is_alive():
                     self._started_vms.add(new_vm)
-                    logging.info("Started VM %s", self._vmid)
+                    log.info("Started VM %s", self._vmid)
 
             # stop VMs that are no longer needed
             for vm in frozenset(self._started_vms):

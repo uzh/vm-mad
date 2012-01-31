@@ -24,22 +24,15 @@ __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
 
-import logging
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-log = logging.getLogger(__package__)
-
 # stdlib imports
 from copy import copy
-
 
 # libcloud imports
 import libcloud.compute.types
 import libcloud.compute.providers
 
-
 # local imports
+from vmmad import log
 from orchestrator import VmInfo
 from util import abstractmethod
 
