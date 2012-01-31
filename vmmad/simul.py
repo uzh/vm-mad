@@ -90,13 +90,48 @@ class OrchestratorSimulation(Orchestrator):
                 self._running.append(job)
                 logging.info("Job %s just started running on VM %s.", job.jobid, vm.vmid)
 
+    def before(self):
+        self._steps += 1
+        if len(self._pending) == 0 and len(self._running) == 0:
+            logging.info("No more jobs, stopping simulation.")
+            sys.exit(0)
+        
+        with open((self.output_file), "a") as output:
+            output.write(
+                "%s,%s,%s,%s,%s\n"
+                #  no. of steps,      pending jobs,       running jobs,            started VMs,            idle VMs,
+                %(self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
+
+        logging.info("At step %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
+                     self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
+
+
+    ##
+    ## (fake) interface to the batch queue scheduler
+    ##
     def get_sched_info(self):
         return (self._running + self._pending)
 
+
+    ##
+    ## policy implementation interface
+    ##
     def is_cloud_candidate(self, job):
         # every job is a candidate in this simulation
         return True
 
+    def is_new_vm_needed(self):
+        if len(self._pending) > 2 * len(self._running):
+            return True
+
+    def can_vm_be_stopped(self, vm):
+        if vm.last_idle > self.max_idle:
+            return True
+
+
+    ##
+    ## (fake) cloud provider interface
+    ##
     def start_vm(self):
         self._vmid += 1
         logging.info("Started VM %s", self._vmid)
@@ -106,7 +141,7 @@ class OrchestratorSimulation(Orchestrator):
                       last_idle=(-self.startup_delay),
                       jobs=set())
 
-    def update_vm_status(self):
+    def update_vm_status(self, vms):
         for vm in self._started_vms:
             vm.been_running += 1
             if not vm.jobs:
@@ -122,28 +157,6 @@ class OrchestratorSimulation(Orchestrator):
         # main `Orchestrator` class.
         return True
 
-    def is_new_vm_needed(self):
-        if len(self._pending) > 2 * len(self._running):
-            return True
-
-    def can_vm_be_stopped(self, vm):
-        if vm.last_idle > self.max_idle:
-            return True
-
-    def before(self):
-        self._steps += 1
-        if len(self._pending) == 0 and len(self._running) == 0:
-            logging.info("No more jobs, stopping simulation.")
-            sys.exit(0)
-        
-        with open((self.output_file), "a") as output:
-            output.write(
-                "%s,%s,%s,%s,%s\n"
-                #  no. of steps,      pending jobs,       running jobs,            started VMs,            idle VMs,
-                %(self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
-
-        logging.info("At step %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
-                     self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
 
 
 if "__main__" == __name__:

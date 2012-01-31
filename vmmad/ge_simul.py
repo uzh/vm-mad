@@ -59,55 +59,9 @@ class GEOrchestratorSimulation(Orchestrator):
                 sorted(os.path.join(qstat_xml_dir, filename)
                        for filename in os.listdir(qstat_xml_dir)
                        if (filename.endswith('.xml') or filename.endswith('.gz')) )))
- 		        
+
         self.__jobs = [ ]
         self.__starting = 0
-        
-    def get_sched_info(self):
-        # read data from next file
-        filename = self.qstat_xml_files.pop()
-	if filename.endswith('.gz'):
-                with gzip.open(filename, 'r') as xml_file:    
-            		xml_data = xml_file.read()
-	else:
-		with open(filename, 'r') as xml_file:
-			xml_data = xml_file.read()
-
-        self.__jobs = ge_info.get_sched_info(xml_data)
-        return self.__jobs
-
-
-    def is_cloud_candidate(self, job):
-        # XXX: only jobs submitted to the "cloud@" queue are candidates?
-        return True
-
-
-    def start_vm(self):
-        logging.warning("Would start a new VM (if this were a real Orchestrator)")
-        self.__starting += 1
-        # ...but fail!
-        return None
-
-
-    def update_vm_status(self):
-        pass
-
-
-    def stop_vm(self, vm):
-        logging.error("Request to stop VM %s,"
-                      " which was never started in the first place",
-                      vm.vmid)
-        return False
-
-
-    def is_new_vm_needed(self):
-        if len(self.candidates) > 0:
-            return True
-
-
-    def can_vm_be_stopped(self, vm):
-        return True
-
 
     def before(self):
         self._steps += 1
@@ -130,6 +84,61 @@ class GEOrchestratorSimulation(Orchestrator):
 
         logging.info("At step %d: pending jobs %d, running jobs %d, starting VMs %d, idle VMs %d",
                      self._steps, len(pending),    len(running),    self.__starting, 0)
+
+
+    ##
+    ## interface to the batch queue scheduler
+    ##
+    def get_sched_info(self):
+        # read data from next file
+        filename = self.qstat_xml_files.pop()
+        if filename.endswith('.gz'):
+            with gzip.open(filename, 'r') as xml_file:    
+                xml_data = xml_file.read()
+        else:
+            with open(filename, 'r') as xml_file:
+                xml_data = xml_file.read()
+
+        self.__jobs = ge_info.get_sched_info(xml_data)
+        return self.__jobs
+
+
+    ##
+    ## policy implementation interface
+    ##
+    def is_cloud_candidate(self, job):
+        # XXX: only jobs submitted to the "cloud@" queue are candidates?
+        return True
+
+    def is_new_vm_needed(self):
+        if len(self.candidates) > 0:
+            return True
+
+
+    def can_vm_be_stopped(self, vm):
+        return True
+
+
+    ##
+    ## (fake) cloud provider interface
+    ##
+    def start_vm(self):
+        logging.warning("Would start a new VM (if this were a real Orchestrator)")
+        self.__starting += 1
+        # ...but fail!
+        return None
+
+
+    def update_vm_status(self, vm):
+        pass
+
+
+    def stop_vm(self, vm):
+        logging.error("Request to stop VM %s,"
+                      " which was never started in the first place",
+                      vm.vmid)
+        return False
+
 
 
 if "__main__" == __name__:

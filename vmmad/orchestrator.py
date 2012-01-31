@@ -46,10 +46,11 @@ class JobInfo(Struct):
     A `JobInfo` object is basically a free-form record, but the
     constructor still enforces the following constraints:
 
+    * There must be a `state` attribute, whose value is one of `JobInfo.PENDING`, `JobInfo,RUNNING`, `JobInfo.FINISHED` or `JobInfo.OTHER`.
     * There must be a non-empty `jobid` attribute.
 
     Running jobs have a (string) `exec_node_name` attribute, which is
-    used to match the associated VM (if any).
+    used to match the associated VM (if any) by host name.
     """
 
     # job states
@@ -129,10 +130,10 @@ class Orchestrator(object):
     backend.
 
     The actual VM start/stop policy is defined by overriding methods
-    `is_new_vm_needed` and `can_stop_vm`.  Each of these methods can
-    access a list of candidate jobs as attribute `self.candidates`;
-    the `can_stop_vm` method is additionally passed a VM ID and can
-    inspect data from that VM.
+    `is_new_vm_needed` and `can_vm_be_stopped`.  Each of these methods
+    can access a list of candidate jobs as attribute
+    `self.candidates`; the `can_vm_be_stopped` method is additionally
+    passed a `VmInfo` object and can inspect data from that VM.
 
     The only method required to interface to a batch queueing system
     is `get_sched_info`, which see for its interface and purpose.
@@ -157,88 +158,6 @@ class Orchestrator(object):
         self.candidates = { }
 
 
-    def update_job_status(self):
-        jobs = self.get_sched_info()
-
-        for job in (j for j in jobs if j.state == JobInfo.RUNNING):
-            # running jobs are no longer candidates
-            if job.jobid in self.candidates:
-                del self.candidates[job.jobid]
-
-        for job in (j for j in jobs if j.state == JobInfo.PENDING):
-            # update candidates' information
-            if self.is_cloud_candidate(job):
-                self.candidates[job.jobid] = job
-
-
-    @abstractmethod
-    def get_sched_info(self):
-        """
-        Query the job scheduler and return a list of `JobInfo` objects
-        representing the jobs in the batch queue system.
-        """
-        pass
-
-
-    @abstractmethod
-    def is_cloud_candidate(self, job):
-        """Return `True` if `job` can be run in a cloud node.
-
-        Override in subclasses to define a different cloud-burst
-        policy.
-        """
-        return False
-
-
-    def update_vm_status(self):
-        """Query cloud providers and update `self._started_vms` with VM node status."""
-        pass
-
-
-    def is_new_vm_needed(self):
-        """Inspect job collection and decide whether we need to start new VMs."""
-        if len(self.candidates) > 0:
-            return True
-
-
-    @abstractmethod
-    def start_vm(self):
-        """Virtual method for starting a new VM.
-
-        Return the VM ID of the started virtual machine, which can be
-        passed to the `stop_vm` method to stop it later.
-        """
-        pass
-
-
-    @abstractmethod
-    def can_vm_be_stopped(self, vm):
-        """Return `True` if the VM identified by `vm` is no longer
-        needed and can be stopped.
-        """
-        pass
-
-
-    @abstractmethod
-    def stop_vm(self, vm):
-        """Virtual method for stopping a VM.
-
-        Takes a `vm` argument, which is the return value of a
-        previous `start_vm` call.
-        """
-        pass
-
-
-    def before(self):
-        """Hook called at the start of the main run() cycle."""
-        pass
-
-
-    def after(self):
-        """Hook called at the end of the main run() cycle."""
-        pass
-
-
     def run(self, delay=30):
         """
         Run the orchestrator until stopped.
@@ -253,7 +172,7 @@ class Orchestrator(object):
             self.before()
             
             self.update_job_status()
-            self.update_vm_status()
+            self.update_vm_status(self._started_vms)
 
             # start new VMs if needed
             if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
@@ -270,6 +189,103 @@ class Orchestrator(object):
             self.after()
 
             time.sleep(delay)
+
+
+    def before(self):
+        """Hook called at the start of the main run() cycle."""
+        pass
+
+
+    def after(self):
+        """Hook called at the end of the main run() cycle."""
+        pass
+
+
+    def update_job_status(self):
+        jobs = self.get_sched_info()
+
+        for job in (j for j in jobs if j.state == JobInfo.RUNNING):
+            # running jobs are no longer candidates
+            if job.jobid in self.candidates:
+                del self.candidates[job.jobid]
+
+        for job in (j for j in jobs if j.state == JobInfo.PENDING):
+            # update candidates' information
+            if self.is_cloud_candidate(job):
+                self.candidates[job.jobid] = job
+
+
+    ##
+    ## interface to the batch queue scheduler
+    ##
+    @abstractmethod
+    def get_sched_info(self):
+        """
+        Query the job scheduler and return a list of `JobInfo` objects
+        representing the jobs in the batch queue system.
+        """
+        pass
+
+
+    ##
+    ## policy implementation interface
+    ##
+    @abstractmethod
+    def is_cloud_candidate(self, job):
+        """Return `True` if `job` can be run in a cloud node.
+
+        Override in subclasses to define a different cloud-burst
+        policy.
+        """
+        return False
+
+
+    def is_new_vm_needed(self):
+        """Inspect job collection and decide whether we need to start new VMs."""
+        if len(self.candidates) > 0:
+            return True
+
+
+    @abstractmethod
+    def can_vm_be_stopped(self, vm):
+        """Return `True` if the VM identified by `vm` is no longer
+        needed and can be stopped.
+        """
+        pass
+
+
+    ##
+    ## cloud provider interface
+    ##
+    @abstractmethod
+    def start_vm(self):
+        """Virtual method for starting a new VM.
+
+        Return a `VmInfo` object describing the started virtual
+        machine, which can be passed to the `stop_vm` method to stop
+        it later.
+        """
+        pass
+
+
+    @abstractmethod
+    def update_vm_status(self, vms):
+        """
+        Query cloud providers and update each `VmInfo` object in list
+        `vms` *in place* with the current VM node status.
+        """
+        pass
+
+
+    @abstractmethod
+    def stop_vm(self, vm):
+        """Virtual method for stopping a VM.
+
+        Takes a `vm` argument, which is the return value of a
+        previous `start_vm` call.
+        """
+        pass
+
 
 
 ## main: run tests
