@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Basic functions to operate on Virtual Machines in a set of clouds.
+Cloud-bursting of a batch cluster into a cloud.
 """
 # Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
 #
