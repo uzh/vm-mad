@@ -30,6 +30,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+log = logging.getLogger(__name__)
 
 from copy import copy
 import random
@@ -37,14 +38,19 @@ import os
 import sys
 import argparse
 
+import cloud
 from orchestrator import Orchestrator, JobInfo, VmInfo
 
 
-class OrchestratorSimulation(Orchestrator):
+class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
 
     def __init__(self, max_vms, max_delta, max_idle, startup_delay,
                  job_number, min_duration, max_duration, output_file):
-        Orchestrator.__init__(self, max_vms, max_delta)
+        # implement the `Cloud` interface to simulate a cloud provider
+        cloud.DummyCloud.__init__(self, '1', '1')
+
+        # init the Orchestrator part, using `self` as cloud provider
+        Orchestrator.__init__(self, self, max_vms, max_delta)
 
         # no jobs are running at the onset, all are pending
         self._running = [ ]
@@ -132,16 +138,15 @@ class OrchestratorSimulation(Orchestrator):
     ##
     ## (fake) cloud provider interface
     ##
-    def start_vm(self):
-        self._vmid += 1
-        logging.info("Started VM %s", self._vmid)
-        return VmInfo(vmid=self._vmid,
-                      been_running=0,
-                      total_idle=0,
-                      last_idle=(-self.startup_delay),
-                      jobs=set())
+
+    def start_vm(self, vm):
+        cloud.DummyCloud.start_vm(self, vm)
+        vm.been_running=0
+        vm.total_idle=0
+        vm.last_idle=(-self.startup_delay)
 
     def update_vm_status(self, vms):
+        cloud.DummyCloud.update_vm_status(self, vms)
         for vm in self._started_vms:
             vm.been_running += 1
             if not vm.jobs:
@@ -151,10 +156,9 @@ class OrchestratorSimulation(Orchestrator):
     def stop_vm(self, vm):
         logging.info("Stopping VM %s: has run for %d steps, been idle for %d of them",
                      vm.vmid, vm.been_running, vm.total_idle)
+        cloud.DummyCloud.stop_vm(self, vm)
         if vm.last_idle > 0:
             self._idle_vm_count -= 1
-        # nothing else to do, since the VM object is deleted by the
-        # main `Orchestrator` class.
         return True
 
 

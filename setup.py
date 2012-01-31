@@ -83,7 +83,7 @@ setuptools.setup(
     # run-time dependencies
     install_requires = [
         # Apache LibCloud
-        'apache_libcloud>=0.5',
+        'apache_libcloud>=0.7',
         # texttable -- format tabular text output
         'texttable',
         # pyCLI -- object-oriented command-line app programming

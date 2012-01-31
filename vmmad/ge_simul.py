@@ -38,14 +38,19 @@ import sys
 import argparse
 import gzip 
 
+from cloud import Cloud
 from orchestrator import Orchestrator, JobInfo, VmInfo
 import ge_info
 
 
-class GEOrchestratorSimulation(Orchestrator):
+class GEOrchestratorSimulation(Orchestrator, Cloud):
 
     def __init__(self, qstat_xml_dir, max_vms, max_delta, max_idle, startup_delay, output_file):
-        Orchestrator.__init__(self, max_vms, max_delta)
+        # implement the `Cloud` interface to simulate a cloud provider
+        Cloud.__init__(self, None, None)
+
+        # init the Orchestrator part, using `self` as cloud provider
+        Orchestrator.__init__(self, self, max_vms, max_delta)
 
         self._steps = 0
 
@@ -122,14 +127,14 @@ class GEOrchestratorSimulation(Orchestrator):
     ##
     ## (fake) cloud provider interface
     ##
-    def start_vm(self):
+    def start_vm(self, vm):
         logging.warning("Would start a new VM (if this were a real Orchestrator)")
         self.__starting += 1
         # ...but fail!
-        return None
+        vm.state = VmInfo.DOWN
 
 
-    def update_vm_status(self, vm):
+    def update_vm_status(self, vms):
         pass
 
 

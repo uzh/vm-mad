@@ -25,15 +25,16 @@ __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
 
+import logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+log = logging.getLogger(__name__)
+
 # stdlib imports
 import os
 import sys
 import time
-
-# apache libcloud
-#from libcloud.compute.types import Provider
-#from libcloud.compute.providers import get_driver
-#import libcloud.security
 
 # local imports
 from util import abstractmethod, Struct
@@ -104,16 +105,65 @@ class VmInfo(Struct):
       The `vmid` attribute must be unique among all `VmInfo` instances!
 
       **FIXME:** This is not currently enforced by the constructor.
+
+    The `state` attribute is set to one of the following strings
+    (defaults to `DOWN` if not given in the constructor):
+
+    ========= ============================================================
+    status    meaning
+    ========= ============================================================
+    STARTING  A request to start the VM has been sent to the Cloud provider,
+              but the VM is not ready yet.
+    UP        The machine is up and running, and connected to the network.
+    STOPPING  The remote VM has been frozen, but normal execution can be resumed.
+    DOWN      The VM has been stopped and cannot be restarted/resumed.
+    OTHER     Unexpected/unhandled state; usually signals an error.
+    ========= ============================================================
+
+
+    The following attributes are available after the machine has
+    reached the ``UP`` state:
+
+    ============  ========  ================================================
+    attribute     type      meaning
+    ============  ========  ================================================
+    public_ip     str       public IP address in dot quad notation
+    private_ip    str       private IP address in dot quad notation
+    cloud         str       cloud identifier
+    started_at    datetime  when the request to start the machine was issued
+    up_at         datetime  when the machine was first detected up and running
+    running_time  duration  total running time (in seconds)
+    bill          float     total cost to be billed by cloud provider (in US$)
+    ============  ========  ================================================
     """
+
+    STARTING = 'STARTING'
+    UP = 'UP'
+    STOPPING = 'STOPPING'
+    DOWN = 'DOWN'
+    OTHER = 'OTHER'
 
     def __init__(self, *args, **kwargs):
         Struct.__init__(self, *args, **kwargs)
         # ensure required fields are there
         assert 'vmid' in self, ("VmInfo object %s missing required field 'vmid'" % self)
+        # provide defaults
+        if 'state' not in self:
+            self.state = VmInfo.DOWN
+        if 'bill' not in self:
+            bill = 0.0
+        
     
     def __hash__(self):
         """Use the VM id as unique hash value."""
         return hash(self.vmid)
+
+
+    def is_alive(self):
+        """
+        Return `True` if the VM is up or will soon be (i.e., it is starting now).
+        """
+        return self.state in [VmInfo.STARTING, VmInfo.UP]
 
 
 ## the main class of this file
@@ -138,12 +188,14 @@ class Orchestrator(object):
     The only method required to interface to a batch queueing system
     is `get_sched_info`, which see for its interface and purpose.
 
-    Methods `start_vm` and `stop_vm` implement the interface to a
-    cloud backend; see the method documentation for the exact
-    interface.
+    The `cloud` argument must be an object that implements the interface
+    defined by the abstract class `vmmad.cloud.Cloud`.
     """
 
-    def __init__(self, max_vms, max_delta=1):
+    def __init__(self, cloud, max_vms, max_delta=1):
+
+        # cloud provider
+        self.cloud = cloud
         
         # max number of VMs that are allocated on the cloud
         self.max_vms = max_vms
@@ -157,6 +209,9 @@ class Orchestrator(object):
         # mapping jobid to job informations
         self.candidates = { }
 
+        # VM book-keeping
+        self._vmid = 0
+        
 
     def run(self, delay=30):
         """
@@ -172,18 +227,21 @@ class Orchestrator(object):
             self.before()
             
             self.update_job_status()
-            self.update_vm_status(self._started_vms)
+            self.cloud.update_vm_status(self._started_vms)
 
             # start new VMs if needed
             if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
-                new_vm = self.start_vm()
-                if new_vm is not None:
+                self._vmid += 1
+                new_vm = VmInfo(vmid=self._vmid, jobs=set())
+                self.cloud.start_vm(new_vm)
+                if new_vm.is_alive():
                     self._started_vms.add(new_vm)
+                    logging.info("Started VM %s", self._vmid)
 
             # stop VMs that are no longer needed
             for vm in frozenset(self._started_vms):
                 if self.can_vm_be_stopped(vm):
-                    if self.stop_vm(vm):
+                    if self.cloud.stop_vm(vm):
                         self._started_vms.remove(vm)
 
             self.after()
@@ -250,39 +308,6 @@ class Orchestrator(object):
     def can_vm_be_stopped(self, vm):
         """Return `True` if the VM identified by `vm` is no longer
         needed and can be stopped.
-        """
-        pass
-
-
-    ##
-    ## cloud provider interface
-    ##
-    @abstractmethod
-    def start_vm(self):
-        """Virtual method for starting a new VM.
-
-        Return a `VmInfo` object describing the started virtual
-        machine, which can be passed to the `stop_vm` method to stop
-        it later.
-        """
-        pass
-
-
-    @abstractmethod
-    def update_vm_status(self, vms):
-        """
-        Query cloud providers and update each `VmInfo` object in list
-        `vms` *in place* with the current VM node status.
-        """
-        pass
-
-
-    @abstractmethod
-    def stop_vm(self, vm):
-        """Virtual method for stopping a VM.
-
-        Takes a `vm` argument, which is the return value of a
-        previous `start_vm` call.
         """
         pass
 
