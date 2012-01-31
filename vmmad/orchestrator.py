@@ -146,8 +146,16 @@ class VmInfo(Struct):
         # provide defaults
         if 'state' not in self:
             self.state = VmInfo.DOWN
+        else:
+            assert self.state in [
+                VmInfo.STARTING,
+                VmInfo.UP,
+                VmInfo.STOPPING,
+                VmInfo.DOWN,
+                VmInfo.OTHER
+                ]
         if 'bill' not in self:
-            bill = 0.0
+            self.bill = 0.0
         
     
     def __hash__(self):

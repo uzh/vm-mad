@@ -31,10 +31,24 @@ from orchestrator import VmInfo
 
 class TestVmInfo(unittest.TestCase):
 
-    def test_required_attributes(self):
+    def test_ctor_required_attributes(self):
         # should raise assertion since `vmid` is required
         self.assertRaises(AssertionError, VmInfo, ())
 
+    def test_ctor_default_values(self):
+        vm = VmInfo(vmid=1)
+        self.assertEqual(vm.state, VmInfo.DOWN)
+        self.assertEqual(vm.bill,  0.0)
+
+    def test_ctor_nondefault_values(self):
+        vm = VmInfo(vmid=1, state=VmInfo.STARTING, bill=1.00)
+        self.assertEqual(vm.state, VmInfo.STARTING)
+        self.assertEqual(vm.bill,  1.00)
+
+    def test_ctor_invalid_state(self):
+        with self.assertRaises(AssertionError):
+            vm = VmInfo(vmid=1, state='whatever but invalid')
+        
 
 ## main: run tests
 
