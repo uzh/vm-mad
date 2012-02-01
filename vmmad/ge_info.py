@@ -59,10 +59,11 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
         # XML attributes *not* in this list are ignored
         JOB_ATTRIBUTES = [
                 'JB_job_number',
-                'JAT_prio',
+                'JB_submission_time',
+		'JAT_start_time',
+		'JAT_prio',
                 'JB_name',
                 'state',
-                'JB_submission_time',
                 'queue_name',
                 'slots'
                 ]
@@ -73,8 +74,9 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 lambda: str,
                 # return other values in particular cases:
                 JB_job_number=int,
-                JAT_prio=float,
-                slots=int,
+		JB_submission_time=str,
+		JAT_prio=float,
+                slots=int,		
                 )
 
         # rename fields to adhere to what the `JobInfo` ctor expects
@@ -84,6 +86,8 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                         # map field names according to this...
                         return {
                                 'JB_job_number':'jobid',
+				'JB_submission_time':'submit_time',
+				'JAT_start_time':'start_time',
                                 }[field]
                 except KeyError:
                         # ...and by default, keep field name unchanged
@@ -114,7 +118,7 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
 
         def endElement(self,name):
                 self._level -= 1
-
+		#self.current.submit_time = "1970-01-01T00:00:00"
                 if 0 == self._level:
                         # end of XML
                         return
@@ -148,13 +152,16 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                                 self.current.state = JobInfo.PENDING
                         elif 'r' in value_str:
                                 self.current.state = JobInfo.RUNNING
+		elif 'JB_job_number' == name:
+			self.current.jobid = value_str
+		elif 'JAT_start_time' == name:
+			self.current.submit_time = value_str
                 elif name in self.JOB_ATTRIBUTES:
                         # convert each XML attribute to a Python representation
                         # (defaulting to `str`, see CONVERT above)
                         self.current[self.rename(name)] = self.CONVERT[name](value_str)
 
                 return
-
 
 def _run_qstat(user='*'):
         try:
@@ -174,8 +181,8 @@ def _run_qstat(user='*'):
 
 def get_sched_info(qstat_xml_out=None):
         """
-        Parse the output of a `qstat -u ... -xml` command and return a
-        pair `(running, pending)`, where each item is a list of
+        Parse the output of a `qstat -xml` command and return a
+        tuple `(jobid,submit_time,duration)`, where each item is a list of
         dictionary-like objects whose keys/attributes directly map the
         XML contents.
         """
@@ -184,7 +191,8 @@ def get_sched_info(qstat_xml_out=None):
         jobs = [ ]
         xml.sax.make_parser()
         xml.sax.parseString(qstat_xml_out, _QstatXmlHandler(jobs))
-        return jobs
+       	return jobs
+	
 
 
 ## main: run tests
