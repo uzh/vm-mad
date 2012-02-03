@@ -215,7 +215,9 @@ class Orchestrator(object):
 
         # VM book-keeping
         self._vmid = 0
-        
+	
+	# Time simulation variable
+	self.time_step = 0        
 
     def run(self, delay=30):
         """
@@ -229,7 +231,7 @@ class Orchestrator(object):
         """
         while True:
             self.before()
-            
+            self.get_time_step()  
             self.update_job_status()
             self.cloud.update_vm_status(self._started_vms)
 
@@ -257,6 +259,10 @@ class Orchestrator(object):
         """Hook called at the start of the main run() cycle."""
         pass
 
+    def get_time_step(self):
+	""" Returns the variable used for incrementation of the time """
+	self.time_step +=1
+	return self.time_step
 
     def after(self):
         """Hook called at the end of the main run() cycle."""
@@ -264,8 +270,7 @@ class Orchestrator(object):
 
 
     def update_job_status(self):
-        jobs = self.get_sched_info()
-
+        jobs = self.get_sched_info()	
         for job in (j for j in jobs if j.state == JobInfo.RUNNING):
             # running jobs are no longer candidates
             if job.jobid in self.candidates:
@@ -287,7 +292,6 @@ class Orchestrator(object):
         representing the jobs in the batch queue system.
         """
         pass
-
 
     ##
     ## policy implementation interface

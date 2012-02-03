@@ -41,11 +41,11 @@ from orchestrator import Orchestrator, JobInfo, VmInfo
 import ge_info
 
 
-class GEOrchestratorSimulation(Orchestrator, Cloud):
+class GEOrchestratorSimulation(Orchestrator):
 
     def __init__(self, qstat_xml_dir, max_vms, max_delta, max_idle, startup_delay, output_file):
         # implement the `Cloud` interface to simulate a cloud provider
-        Cloud.__init__(self, None, None)
+        #Cloud.__init__(self, None, None)
 
         # init the Orchestrator part, using `self` as cloud provider
         Orchestrator.__init__(self, self, max_vms, max_delta)
@@ -56,7 +56,7 @@ class GEOrchestratorSimulation(Orchestrator, Cloud):
         self.startup_delay = startup_delay
         self.output_file = output_file
 
-        # load data files
+        # load xml data files
         self.qstat_xml_files = list(
             reversed(
                 sorted(os.path.join(qstat_xml_dir, filename)
@@ -105,7 +105,6 @@ class GEOrchestratorSimulation(Orchestrator, Cloud):
         self.__jobs = ge_info.get_sched_info(xml_data)
         return self.__jobs
 
-
     ##
     ## policy implementation interface
     ##
@@ -152,7 +151,7 @@ if "__main__" == __name__:
     parser.add_argument('--max-delta', '-md', metavar='N', dest="max_delta", default=1, type=int, help="To be defined")    
     parser.add_argument('--max-idle', '-mi', metavar='NUM_SECS', dest="max_idle", default=30, type=int, help="Maximum idle time (in seconds) before swithing off a VM, default is %(default)s")
     parser.add_argument('--startup-delay', '-S', metavar='NUM_SECS', dest="startup_delay", default=60, type=int, help="Time (in seconds) delay before staring up a VM, default is %(default)s")
-    parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s")
+    parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, default: %(default)s")
     parser.add_argument('--version', '-V', action='version',
                         version=("%(prog)s version " + __version__))
     args = parser.parse_args()

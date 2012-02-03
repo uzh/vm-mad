@@ -46,8 +46,9 @@ from datetime import datetime
 
 class Distil():
 
-    def __init__(self, data_dir, output_file, xml_parse):
+    def __init__(self, data_dir, output_file, xml_parse, accounting_file):
 
+	self.accounting_file = os.path.join(data_dir, accounting_file) 
 	self.xml_parse = xml_parse
 	self.output_file = output_file
         # load data files
@@ -57,12 +58,6 @@ class Distil():
                 sorted(os.path.join(data_dir, filename)
                        for filename in os.listdir(data_dir)
                        if (filename.endswith('.xml') or filename.endswith('.gz')) )))
-	## load accounting files 
-	self.accounting_files = list( 
-	    reversed(
-		sorted(os.path.join(data_dir, filename)
-			for filename in os.listdir(data_dir) 
-			if ((filename == "accounting") ))))	
         self.__jobs = [ ]
         self.__starting = 0
 
@@ -91,29 +86,31 @@ class Distil():
 				f.write(to_file)
 				f.write('\n')
 		f.close()
+
 						
-    def parse_accounting_files(self):
+    def parse_accounting_file(self):
 	time_now = datetime.now()
         unix_time_now = int(mktime(time_now.timetuple()))
 	outputFile = csv.writer(open(self.output_file, 'wb'), delimiter=' ', quotechar='|')
-	for filename in self.accounting_files:
-		for line in open(filename,'r').readlines():
-			arrgs = line.split(':')
-	                if len(arrgs) >= 11:
-				duration = int(arrgs[10]) - int(arrgs[9])
-				outputFile.writerow([arrgs[5]] + [(arrgs[8])] + [(duration)])
+	for line in open(self.accounting_file,'r').readlines():
+		arrgs = line.split(':')
+	        if len(arrgs) >= 11 and int(arrgs[8]) !=0:
+			duration = int(arrgs[10]) - int(arrgs[9])
+			outputFile.writerow([arrgs[5]] + [(arrgs[8])] + [(duration)])
 
     def run(self):
 	# Populete with the sched info. from the xml files.
 	if self.xml_parse:
 		self.parse_xml_files()
 	# populate with the sched info. from the accounting files
- 	self.parse_accounting_files()
+ 	self.parse_accounting_file()
+
 if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Distils `qstat -xml` and SGE account info ')
     parser.add_argument('data_dir', help="Path to the directory contaning qstat output files.")
     parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="output.csv", help="File name where the output of the distilation will be stored, %(default)s")
+    parser.add_argument('--accounting-file', '-I',  metavar='String', dest="accounting_file", default="accounting", help="Input file with accounting information, %(default)s")
     parser.add_argument('--no-xml', '-nxml',  metavar='Boolean', dest="xml_parse", default=False , help="Disable parsing xml file, %(default)s")
     parser.add_argument('--version', '-V', action='version', version=("%(prog)s version " + __version__))
     args = parser.parse_args()
-    Distil(args.data_dir, args.output_file, args.xml_parse).run()
+    Distil(args.data_dir, args.output_file, args.xml_parse, args.accounting_file).run()

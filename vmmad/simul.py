@@ -32,6 +32,11 @@ import random
 import os
 import sys
 import argparse
+import csv
+import time
+from time import mktime
+from datetime import datetime
+
 
 # local imports
 from vmmad import log
@@ -42,7 +47,7 @@ from orchestrator import Orchestrator, JobInfo, VmInfo
 class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
 
     def __init__(self, max_vms, max_delta, max_idle, startup_delay,
-                 job_number, min_duration, max_duration, output_file):
+                 job_number, min_duration, max_duration, output_file, csv_file, start_time):
         # implement the `Cloud` interface to simulate a cloud provider
         cloud.DummyCloud.__init__(self, '1', '1')
 
@@ -50,24 +55,33 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
         Orchestrator.__init__(self, self, max_vms, max_delta)
 
         # no jobs are running at the onset, all are pending
-        self._running = [ ]
-        self._pending = [ JobInfo(jobid=random.randint(1,job_number*10),
-                                  state=JobInfo.PENDING,
-                                  duration=random.randint(min_duration, max_duration))
-                          for _ in range(0,job_number) ]
-
+        self._running = [ ] 		
+	
+	#Random generated pending jobs
+        #self._pending = [ JobInfo(jobid=random.randint(1,job_number*10),
+        #                          state=JobInfo.PENDING,
+        #                          duration=random.randint(min_duration, max_duration))
+        #                  for _ in range(0,job_number) ]
+	
+	self._pending = [ JobInfo(jobid=0, state=JobInfo.PENDING, duration=1) ]
+	
+	# Convert starting time to UNIX time
+	struct_time = time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )
+        dt = datetime.fromtimestamp(mktime(struct_time))
+        self.sched_time = int(mktime(dt.timetuple()))
+	
+	self.csv_file = csv_file
         self.max_idle = max_idle
         self.startup_delay = startup_delay
         self.output_file = output_file 
-
         # info about running VMs
         self._vmid = 0
         self._idle_vm_count = 0
-
         self._steps = 0
         
     def update_job_status(self):
         # do regular work
+	
         Orchestrator.update_job_status(self)
         # simulate job run time passing and stop finished jobs
         for job in copy(self._running):
@@ -110,11 +124,18 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
 
 
     ##
-    ## (fake) interface to the batch queue scheduler
+    ## Interface to the CSV file format
     ##
     def get_sched_info(self):
+	time_step =  Orchestrator.get_time_step(self)
+	previous_time = self.sched_time + (time_step-1)*100480
+	new_time= self.sched_time + time_step*100480 
+	reader = csv.reader(open(self.csv_file), delimiter=' ')
+	for row in reader:
+    		if int(row[1]) > previous_time and int(row[1]) <= new_time:
+			self._pending.append(JobInfo( jobid=int(row[0]), state=JobInfo.PENDING, duration=int(row[2])) )	
+	
         return (self._running + self._pending)
-
 
     ##
     ## policy implementation interface
@@ -169,8 +190,10 @@ if "__main__" == __name__:
     parser.add_argument('--job-number', '-jn', metavar='N', dest="job_number", default=50, type=int, help="Number of job to be started, default is %(default)s")
     parser.add_argument('--min-duration', '-mind', metavar='NUM_SECS', dest="min_duration", default=30, type=int, help="Lower bound for job's time (in seconds) execution, default is %(default)s")
     parser.add_argument('--max-duration', '-maxd', metavar='NUM_SECS', dest="max_duration", default=120, type=int, help="Upper bound for job's time (in seconds)  execution, default is %(default)s")
+    parser.add_argument('--csv-file', '-csvf',  metavar='String', dest="csv_file", default="output.csv", help="File containing the CSV information, %(default)s")
     parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s")
+    parser.add_argument('--start-time', '-st',  metavar='String', dest="start_time", default="1970-01-01T00:00:00", help="Start time for the simulation, default: %(default)s")
     parser.add_argument('--version', '-V', action='version',
                         version=("%(prog)s version " + __version__))
     args = parser.parse_args()
-    OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration, args.output_file).run(0)
+    OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration, args.output_file, args.csv_file, args.start_time).run(1)
