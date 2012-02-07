@@ -48,62 +48,61 @@ class Distil():
 
     def __init__(self, data_dir, output_file, xml_parse, accounting_file):
 
-	self.accounting_file = os.path.join(data_dir, accounting_file) 
-	self.xml_parse = xml_parse
-	self.output_file = output_file
+        self.accounting_file = os.path.join(data_dir, accounting_file) 
+        self.xml_parse = xml_parse
+        self.output_file = output_file
         # load data files
-	## load xml files
-	self.qstat_xml_files = list(
+        ## load xml files
+        self.qstat_xml_files = list(
             reversed(
                 sorted(os.path.join(data_dir, filename)
-                       for filename in os.listdir(data_dir)
-                       if (filename.endswith('.xml') or filename.endswith('.gz')) )))
+                    for filename in os.listdir(data_dir)
+                        if (filename.endswith('.xml') or filename.endswith('.gz')) )))
         self.__jobs = [ ]
         self.__starting = 0
 
     def parse_xml_files(self):
-	for filename in self.qstat_xml_files: 	
-		if filename.endswith('.gz'):
-               		with gzip.open(filename, 'r') as xml_file:    
-      				xml_data = xml_file.read()
-		else:
-			with open(filename, 'r') as xml_file:
-				xml_data = xml_file.read()
-       		self.__jobs = ge_info.get_sched_info(xml_data)
-		f = open(self.output_file, 'w')	
-		for job in self.__jobs:
-			if job.state == 1:
-				# Convert the submit time to UNIX time 
-				struct_time = time.strptime(job.submit_time, "%Y-%m-%dT%H:%M:%S" )
-				dt = datetime.fromtimestamp(mktime(struct_time))
-				unix_sub_time = mktime(dt.timetuple())
+        for filename in self.qstat_xml_files: 	
+            if filename.endswith('.gz'):
+                with gzip.open(filename, 'r') as xml_file:    
+                    xml_data = xml_file.read()
+            else:
+                with open(filename, 'r') as xml_file:
+                    xml_data = xml_file.read()
+                self.__jobs = ge_info.get_sched_info(xml_data)
+        f = open(self.output_file, 'w')	
+        for job in self.__jobs:
+            if job.state == 1:
+                # Convert the submit time to UNIX time 
+                struct_time = time.strptime(job.submit_time, "%Y-%m-%dT%H:%M:%S" )
+                dt = datetime.fromtimestamp(mktime(struct_time))
+                unix_sub_time = mktime(dt.timetuple())
 				# Calculate the duration 
-				time_now = datetime.now()
-				unix_time_now = mktime(time_now.timetuple())
-				duration = unix_time_now - unix_sub_time
+                time_now = datetime.now()
+                unix_time_now = mktime(time_now.timetuple())
+                duration = unix_time_now - unix_sub_time
 				# Write the results to file
-				to_file = job.jobid + ' ' + str(unix_sub_time) + ' ' + str(duration) 
-				f.write(to_file)
-				f.write('\n')
-		f.close()
+                to_file = job.jobid + ' ' + str(unix_sub_time) + ' ' + str(duration) 
+                f.write(to_file)
+                f.write('\n')
+        f.close()
 
-						
     def parse_accounting_file(self):
-	time_now = datetime.now()
+        time_now = datetime.now()
         unix_time_now = int(mktime(time_now.timetuple()))
-	outputFile = csv.writer(open(self.output_file, 'wb'), delimiter=' ', quotechar='|')
-	for line in open(self.accounting_file,'r').readlines():
-		arrgs = line.split(':')
-	        if len(arrgs) >= 11 and int(arrgs[8]) !=0:
-			duration = int(arrgs[10]) - int(arrgs[9])
-			outputFile.writerow([arrgs[5]] + [(arrgs[8])] + [(duration)])
+        outputFile = csv.writer(open(self.output_file, 'wb'), delimiter=' ')
+        for line in open(self.accounting_file,'r').readlines():
+            arrgs = line.split(':')
+            if len(arrgs) >= 11 and int(arrgs[8]) !=0:
+                duration = int(arrgs[10]) - int(arrgs[9])
+                outputFile.writerow([arrgs[5]] + [(arrgs[8])] + [(duration)])
 
     def run(self):
-	# Populete with the sched info. from the xml files.
-	if self.xml_parse:
-		self.parse_xml_files()
-	# populate with the sched info. from the accounting files
- 	self.parse_accounting_file()
+	    # Populete with the sched info. from the xml files. 
+        if self.xml_parse:
+            self.parse_xml_files()
+	    # populate with the sched info. from the accounting files
+        self.parse_accounting_file()
 
 if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Distils `qstat -xml` and SGE account info ')

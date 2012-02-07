@@ -47,54 +47,52 @@ from orchestrator import Orchestrator, JobInfo, VmInfo
 class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
 
     def __init__(self, max_vms, max_delta, max_idle, startup_delay,
-                 job_number, min_duration, max_duration, output_file, csv_file, start_time, time_interval, job_iteration_interval):
+                 job_number, min_duration, max_duration, output_file, csv_file, start_time, time_interval, job_time_interval, cluster_size):
         # implement the `Cloud` interface to simulate a cloud provider
         cloud.DummyCloud.__init__(self, '1', '1')
 
         # init the Orchestrator part, using `self` as cloud provider
         Orchestrator.__init__(self, self, max_vms, max_delta)
 
-        # no jobs are running at the onset, all are pending
-        self._running = [ ] 		
-	
-	#Random generated pending jobs
-        #self._pending = [ JobInfo(jobid=random.randint(1,job_number*10),
-        #                          state=JobInfo.PENDING,
-        #                          duration=random.randint(min_duration, max_duration))
-        #                  for _ in range(0,job_number) ]
-	
-	self._pending = [ JobInfo(jobid=0, state=JobInfo.PENDING, duration=1) ]
-	
-	# Convert starting time to UNIX time
-	struct_time = time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )
+        # Convert starting time to UNIX time
+        struct_time = time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )
         dt = datetime.fromtimestamp(mktime(struct_time))
         self.sched_time = int(mktime(dt.timetuple()))
 	
-	self.csv_file = csv_file
+        # Set simulation settings
+        self.csv_file = csv_file
         self.max_idle = max_idle
         self.startup_delay = startup_delay
-        self.output_file = output_file 
-	self.time_interval = int(time_interval)
-	self.job_iteration_interval = int(job_iteration_interval)
+        self.output_file = output_file
+        self.cluster_size = int(cluster_size) 
+        self.time_interval = int(time_interval)
+        self.job_time_interval = int(job_time_interval)
+
         # info about running VMs
-        self._vmid = 0
+        self._vmid = 0 
         self._idle_vm_count = 0
         self._steps = 0
-        
+       
+        # start "cluster_size" of jobs in order to "wake-up" the real hardware of our disposal 
+        self._running = [ ]
+
+        self._pending = [ JobInfo(jobid=1, state=JobInfo.PENDING, duration=0) ]
+
+
     def update_job_status(self):
-        # do regular work
-	
+        # do regular work	
         Orchestrator.update_job_status(self)
         # simulate job run time passing and stop finished jobs
         for job in copy(self._running):
-            job.duration -= self.job_iteration_interval
+            job.duration -= self.job_time_interval
             if job.duration <= 0:
                 vm = job.vm
                 vm.jobs.remove(job.jobid)
                 self._running.remove(job)
-                self._idle_vm_count += 1
-                log.info("Job %s just finished; VM %s is now idle.",
-                             job.jobid, vm.vmid)
+                if not vm.ever_running:
+                    self._idle_vm_count += 1
+                    log.info("Job %s just finished; VM %s is now idle.",
+                        job.jobid, vm.vmid)
         # simulate SGE scheduler starting a new job
         for vm in self._started_vms:
             if vm.last_idle > 0:
@@ -104,8 +102,9 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
                 vm.jobs.add(job.jobid)
                 job.vm = vm
                 vm.last_idle = 0
-                if self._idle_vm_count > 0:
-                    self._idle_vm_count -= 1
+                if not vm.ever_running:
+                    if self._idle_vm_count > 0:
+                        self._idle_vm_count -= 1
                 self._running.append(job)
                 log.info("Job %s just started running on VM %s.", job.jobid, vm.vmid)
 
@@ -129,15 +128,13 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
     ## Interface to the CSV file format
     ##
     def get_sched_info(self):
-
-	time_step =  Orchestrator.get_time_step(self)
-	previous_time = self.sched_time + (time_step-1)*self.time_interval
-	new_time= self.sched_time + time_step*self.time_interval
-	reader = csv.reader(open(self.csv_file), delimiter=' ')
-	for row in reader:
-    		if int(row[1]) > previous_time and int(row[1]) <= new_time:
-			self._pending.append(JobInfo( jobid=int(row[0]), state=JobInfo.PENDING, duration=int(row[2])) )	
-	
+        time_step =  Orchestrator.get_time_step(self)
+        previous_time = self.sched_time + (time_step-1)*self.time_interval
+        new_time= self.sched_time + time_step*self.time_interval
+        reader = csv.reader(open(self.csv_file), delimiter=' ')
+        for row in reader:
+    	    if int(row[1]) > previous_time and int(row[1]) <= new_time:
+	            self._pending.append(JobInfo( jobid=int(row[0]), state=JobInfo.PENDING, duration=int(row[2])) )		
         return (self._running + self._pending)
 
     ##
@@ -166,19 +163,30 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
         vm.total_idle=0
         vm.last_idle=(-self.startup_delay)
 
+        # Setting the first "cluster_size" machines to be ever_running. 
+        if vm.vmid <= self.cluster_size:
+            vm.ever_running = True 
+            vm.last_idle = 1 
+        else:
+            vm.ever_running = False 
+
     def update_vm_status(self, vms):
         cloud.DummyCloud.update_vm_status(self, vms)
         for vm in self._started_vms:
-            vm.been_running += 1
-            if not vm.jobs:
-                vm.total_idle += 1
-                vm.last_idle += 1
+            if not vm.ever_running:
+                vm.been_running += 1
+                if not vm.jobs:
+                    vm.total_idle += 1
+                    vm.last_idle += 1
+            else:
+                if not vm.jobs:
+                    vm.last_idle = 1  
 
     def stop_vm(self, vm):
         log.info("Stopping VM %s: has run for %d steps, been idle for %d of them",
                      vm.vmid, vm.been_running, vm.total_idle)
         cloud.DummyCloud.stop_vm(self, vm)
-        if vm.last_idle > 0:
+        if vm.last_idle > 0 and not vm.ever_running:
             self._idle_vm_count -= 1
         return True
 
@@ -195,10 +203,11 @@ if "__main__" == __name__:
     parser.add_argument('--max-duration', '-maxd', metavar='NUM_SECS', dest="max_duration", default=120, type=int, help="Upper bound for job's time (in seconds)  execution, default is %(default)s")
     parser.add_argument('--csv-file', '-csvf',  metavar='String', dest="csv_file", default="output.csv", help="File containing the CSV information, %(default)s")
     parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s") 
-    parser.add_argument('--job-iteration-interval', '-ji',  metavar='NUM_SECS', dest="job_iteration_interval", default="300", help="Time interval to be sub. form job duration during iterations, default: %(default)s")
-    parser.add_argument('--start-time', '-st',  metavar='String', dest="start_time", default="1970-01-01T00:00:00", help="Start time for the simulation, default: %(default)s")
-    parser.add_argument('--time-interval', '-ti',  metavar='NUM_SECS', dest="time_interval", default="3600", help="UNIX interval in seconds used as parsing interval for the jobs in the CSV file, default: %(default)s")
+    parser.add_argument('--job-time-interval', '-jtimei',  metavar='NUM_SECS', dest="job_time_interval", default="300", help="Time interval to be substracted from job duration during iterations, default: %(default)s")
+    parser.add_argument('--cluster-size', '-cs',  metavar='NUM_CPUS', dest="cluster_size", default="20", help="Number of VMs, used for the simulation of real available cluster: %(default)s")
+    parser.add_argument('--start-time', '-stime',  metavar='String', dest="start_time", default="1970-01-01T00:00:00", help="Start time for the simulation, default: %(default)s")
+    parser.add_argument('--time-interval', '-timei',  metavar='NUM_SECS', dest="time_interval", default="3600", help="UNIX interval in seconds used as parsing interval for the jobs in the CSV file, default: %(default)s")
     parser.add_argument('--version', '-V', action='version',
                         version=("%(prog)s version " + __version__))
     args = parser.parse_args()
-    OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration, args.output_file, args.csv_file, args.start_time, args.time_interval, args.job_iteration_interval).run(0)
+    OrchestratorSimulation(args.max_vms, args.max_delta, args.max_idle, args.startup_delay, args.job_number, args.min_duration, args.max_duration, args.output_file, args.csv_file, args.start_time, args.time_interval, args.job_time_interval, args.cluster_size).run(0)
