@@ -71,7 +71,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         # Convert starting time to UNIX time
         struct_time = time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )
         dt = datetime.fromtimestamp(mktime(struct_time))
-        self.sched_time = int(mktime(dt.timetuple()))
+        self.starting_time = int(mktime(dt.timetuple()))
 
         # Set simulation settings
         self.max_idle = max_idle
@@ -131,11 +131,11 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             output.write(
                 "%s,%s,%s,%s,%s\n"
                 #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
-                %(self.sched_time + (self.time_interval*self._steps), 
+                %(self.starting_time + (self.time_interval*self._steps), 
                                       len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
-                     (self.sched_time + self.time_interval*self._steps), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
+                     (self.starting_time + self.time_interval*self._steps), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
 
 
     ##
@@ -143,8 +143,8 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     ##
     def get_sched_info(self):
         time_step =  Orchestrator.get_time_step(self)
-        previous_time = self.sched_time + (time_step-1)*self.time_interval
-        new_time= self.sched_time + time_step*self.time_interval
+        previous_time = self.starting_time + (time_step-1)*self.time_interval
+        new_time= self.starting_time + time_step*self.time_interval
         for job in self.read_next_jobs(previous_time, new_time): 
             self._pending.append(job)
         return (self._running + self._pending)
