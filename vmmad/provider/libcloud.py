@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Interfaces to specific cloud providers, using `Apache LibCloud <http://libcloud.apache.org>`
+Interfaces to cloud providers, using `Apache LibCloud <http://libcloud.apache.org>`
 """
 # Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
 #
@@ -20,6 +20,8 @@ Interfaces to specific cloud providers, using `Apache LibCloud <http://libcloud.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import absolute_import
+
 __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
@@ -34,62 +36,15 @@ import libcloud.compute.providers
 
 # local imports
 from vmmad import log
-from orchestrator import VmInfo
+from vmmad.orchestrator import VmInfo
+from vmmad.provider import NodeProvider
 
 
-class Cloud:
+class CloudNodeProvider(NodeProvider):
     """
-    Abstract base class describing the interface that a cloud provider
-    should implement.
+    Abstract base class implementing common functionality for all
+    LibCloud providers.
     """
-
-    def __init__(self, image, kind):
-        """
-        Initialize a cloud provider instance.
-
-        The `image` and `kind` arguments specify the features of the
-        VM instances that are later created by `start_vm`.
-        """
-        pass
-        
-
-    @abstractmethod
-    def start_vm(self, vm):
-        """
-        Start a new VM.
-
-        Return a `VmInfo` object describing the started virtual
-        machine, which can be passed to the `stop_vm` method to stop
-        it later.
-        """
-        pass
-
-
-    @abstractmethod
-    def update_vm_status(self, vms):
-        """
-        Query cloud providers and update each `VmInfo` object in list
-        `vms` *in place* with the current VM node status.
-        """
-        pass
-
-
-    @abstractmethod
-    def stop_vm(self, vm):
-        """
-        Stop a running VM.
-
-        After this method has successfully completed, the VM must no
-        longer be running, all of its resources have been freed, and
-        -most importantly- nothing is being charged to the account
-        used for initialization.
-
-        The `vm` argument is a `VmInfo` object, on which previous
-        `start_vm` call should have recorded instance information.
-        """
-        pass
-
-
     @staticmethod
     def _vminfo_state_from_libcloud_status(status):
         """
@@ -103,10 +58,9 @@ class Cloud:
             libcloud.compute.types.NodeState.PENDING:    VmInfo.STARTING,
             libcloud.compute.types.NodeState.UNKNOWN:    VmInfo.OTHER,
             }[status]
-        
 
 
-class DummyCloud(Cloud):
+class DummyCloud(CloudNodeProvider):
     """
     Interface `Apache LibCloud <http://libcloud.apache.org/>` "dummy" cloud provider.
     """
@@ -176,7 +130,7 @@ class DummyCloud(Cloud):
 
 
 
-class EC2Cloud(Cloud):
+class EC2Cloud(CloudNodeProvider):
     """
     Interface to Amazon EC2 on top of `Apache LibCloud <http://libcloud.apache.org/>`.
     """
@@ -248,5 +202,3 @@ class EC2Cloud(Cloud):
             vm = self._instance_to_vm_map[node.uuid]
             vm.instance = node
             vm.state = self._vminfo_state_from_libcloud_status(node.state)
-            
-            

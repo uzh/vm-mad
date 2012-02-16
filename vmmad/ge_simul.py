@@ -36,7 +36,6 @@ import gzip
 
 # local imports
 from vmmad import log
-from cloud import Cloud
 from orchestrator import Orchestrator, JobInfo, VmInfo
 import ge_info
 
@@ -44,8 +43,8 @@ import ge_info
 class GEOrchestratorSimulation(Orchestrator):
 
     def __init__(self, qstat_xml_dir, max_vms, max_delta, max_idle, startup_delay, output_file):
-        # implement the `Cloud` interface to simulate a cloud provider
-        #Cloud.__init__(self, None, None)
+        # implement the `NodeProvider` interface to simulate a cloud provider
+        #NodeProvider.__init__(self, None, None)
 
         # init the Orchestrator part, using `self` as cloud provider
         Orchestrator.__init__(self, self, max_vms, max_delta)

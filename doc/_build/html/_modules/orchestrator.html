@@ -1,0 +1,408 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>orchestrator &mdash; VM-MAD vdevelopment (SVN $Revision$) documentation</title>
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     'development (SVN $Revision$)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="VM-MAD vdevelopment (SVN $Revision$) documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for orchestrator</h1><div class="highlight"><pre>
+<span class="c">#! /usr/bin/env python</span>
+<span class="c">#</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Launch compute node VMs on demand.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c"># Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.</span>
+<span class="c">#</span>
+<span class="c"># Authors:</span>
+<span class="c">#   Christian Panse &lt;cp@fgcz.ethz.ch&gt;</span>
+<span class="c">#   Riccardo Murri &lt;riccardo.murri@gmail.com&gt;</span>
+<span class="c">#</span>
+<span class="c"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c"># you may not use this file except in compliance with the License.</span>
+<span class="c"># You may obtain a copy of the License at</span>
+<span class="c">#</span>
+<span class="c">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c">#</span>
+<span class="c"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c"># See the License for the specific language governing permissions and</span>
+<span class="c"># limitations under the License.</span>
+<span class="c">#</span>
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText&#39;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&#39;$Revision$&#39;</span>
+
+
+<span class="c"># stdlib imports</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="c"># local imports</span>
+<span class="kn">from</span> <span class="nn">vmmad</span> <span class="kn">import</span> <span class="n">log</span>
+<span class="kn">from</span> <span class="nn">util</span> <span class="kn">import</span> <span class="n">Struct</span>
+
+
+<div class="viewcode-block" id="JobInfo"><a class="viewcode-back" href="../api.html#orchestrator.JobInfo">[docs]</a><span class="k">class</span> <span class="nc">JobInfo</span><span class="p">(</span><span class="n">Struct</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Record data about a job in the batch system.</span>
+
+<span class="sd">    A `JobInfo` object is basically a free-form record, but the</span>
+<span class="sd">    constructor still enforces the following constraints:</span>
+
+<span class="sd">    * There must be a `state` attribute, whose value is one of `JobInfo.PENDING`, `JobInfo,RUNNING`, `JobInfo.FINISHED` or `JobInfo.OTHER`.</span>
+<span class="sd">    * There must be a non-empty `jobid` attribute.</span>
+
+<span class="sd">    Running jobs have a (string) `exec_node_name` attribute, which is</span>
+<span class="sd">    used to match the associated VM (if any) by host name.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c"># job states</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">RUNNING</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">FINISHED</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">OTHER</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">Struct</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c"># ensure required fields are there</span>
+        <span class="k">assert</span> <span class="s">&#39;jobid&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">,</span> <span class="p">(</span><span class="s">&quot;JobInfo object </span><span class="si">%s</span><span class="s"> missing required field &#39;jobid&#39;&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s">&#39;state&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">,</span> <span class="p">(</span><span class="s">&quot;JobInfo object </span><span class="si">%s</span><span class="s"> missing required field &#39;state&#39;&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="n">JobInfo</span><span class="o">.</span><span class="n">PENDING</span><span class="p">,</span>
+            <span class="n">JobInfo</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">,</span>
+            <span class="n">JobInfo</span><span class="o">.</span><span class="n">FINISHED</span><span class="p">,</span>
+            <span class="n">JobInfo</span><span class="o">.</span><span class="n">OTHER</span>
+            <span class="p">],</span> \
+            <span class="p">(</span><span class="s">&quot;Invalid state &#39;</span><span class="si">%s</span><span class="s">&#39; for JobInfo object </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="JobInfo.is_running"><a class="viewcode-back" href="../api.html#orchestrator.JobInfo.is_running">[docs]</a>    <span class="k">def</span> <span class="nf">is_running</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return `True` if the job is running.</span>
+
+<span class="sd">        A running job is guaranteed to have a valid `exec_node_name`</span>
+<span class="sd">        attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">JobInfo</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="s">&#39;exec_node_name&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">,</span> \
+                   <span class="p">(</span><span class="s">&quot;JobInfo object </span><span class="si">%s</span><span class="s"> marked RUNNING&quot;</span>
+                    <span class="s">&quot; but missing required field &#39;exec_node_name&#39;&quot;</span>
+                    <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="p">,))</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+</div></div>
+<div class="viewcode-block" id="VmInfo"><a class="viewcode-back" href="../api.html#orchestrator.VmInfo">[docs]</a><span class="k">class</span> <span class="nc">VmInfo</span><span class="p">(</span><span class="n">Struct</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Record data about a started VM instance.</span>
+
+<span class="sd">    A `VmInfo` object is mostly a free-form record, but the</span>
+<span class="sd">    constructor still enforces the following constraints:</span>
+
+<span class="sd">    * There must be a non-empty `vmid` attribute.</span>
+
+<span class="sd">    .. note::</span>
+
+<span class="sd">      The `vmid` attribute must be unique among all `VmInfo` instances!</span>
+
+<span class="sd">      **FIXME:** This is not currently enforced by the constructor.</span>
+
+<span class="sd">    The `state` attribute is set to one of the following strings</span>
+<span class="sd">    (defaults to `DOWN` if not given in the constructor):</span>
+
+<span class="sd">    ========= ============================================================</span>
+<span class="sd">    status    meaning</span>
+<span class="sd">    ========= ============================================================</span>
+<span class="sd">    STARTING  A request to start the VM has been sent to the Cloud provider,</span>
+<span class="sd">              but the VM is not ready yet.</span>
+<span class="sd">    UP        The machine is up and running, and connected to the network.</span>
+<span class="sd">    STOPPING  The remote VM has been frozen, but normal execution can be resumed.</span>
+<span class="sd">    DOWN      The VM has been stopped and cannot be restarted/resumed.</span>
+<span class="sd">    OTHER     Unexpected/unhandled state; usually signals an error.</span>
+<span class="sd">    ========= ============================================================</span>
+
+
+<span class="sd">    The following attributes are available after the machine has</span>
+<span class="sd">    reached the ``UP`` state:</span>
+
+<span class="sd">    ============  ========  ================================================</span>
+<span class="sd">    attribute     type      meaning</span>
+<span class="sd">    ============  ========  ================================================</span>
+<span class="sd">    public_ip     str       public IP address in dot quad notation</span>
+<span class="sd">    private_ip    str       private IP address in dot quad notation</span>
+<span class="sd">    cloud         str       cloud identifier</span>
+<span class="sd">    started_at    datetime  when the request to start the machine was issued</span>
+<span class="sd">    up_at         datetime  when the machine was first detected up and running</span>
+<span class="sd">    running_time  duration  total running time (in seconds)</span>
+<span class="sd">    bill          float     total cost to be billed by cloud provider (in US$)</span>
+<span class="sd">    ============  ========  ================================================</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">STARTING</span> <span class="o">=</span> <span class="s">&#39;STARTING&#39;</span>
+    <span class="n">UP</span> <span class="o">=</span> <span class="s">&#39;UP&#39;</span>
+    <span class="n">STOPPING</span> <span class="o">=</span> <span class="s">&#39;STOPPING&#39;</span>
+    <span class="n">DOWN</span> <span class="o">=</span> <span class="s">&#39;DOWN&#39;</span>
+    <span class="n">OTHER</span> <span class="o">=</span> <span class="s">&#39;OTHER&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">Struct</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c"># ensure required fields are there</span>
+        <span class="k">assert</span> <span class="s">&#39;vmid&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">,</span> <span class="p">(</span><span class="s">&quot;VmInfo object </span><span class="si">%s</span><span class="s"> missing required field &#39;vmid&#39;&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="c"># provide defaults</span>
+        <span class="k">if</span> <span class="s">&#39;state&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">DOWN</span>
+        <span class="k">if</span> <span class="s">&#39;bill&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="n">bill</span> <span class="o">=</span> <span class="mf">0.0</span>
+        
+    
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Use the VM id as unique hash value.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vmid</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="VmInfo.is_alive"><a class="viewcode-back" href="../api.html#orchestrator.VmInfo.is_alive">[docs]</a>    <span class="k">def</span> <span class="nf">is_alive</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return `True` if the VM is up or will soon be (i.e., it is starting now).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="n">VmInfo</span><span class="o">.</span><span class="n">STARTING</span><span class="p">,</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">UP</span><span class="p">]</span>
+
+
+<span class="c">## the main class of this file</span>
+</div></div>
+<div class="viewcode-block" id="Orchestrator"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator">[docs]</a><span class="k">class</span> <span class="nc">Orchestrator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The `Orchestrator` monitors a job queue and starts/stops VMs</span>
+<span class="sd">    according to a pre-defined policy in order to offload jobs from</span>
+<span class="sd">    the queue.</span>
+
+<span class="sd">    `Orchestrator` is an abstract class that cannot be directly</span>
+<span class="sd">    instanciated: subclassing is needed to define a policy and</span>
+<span class="sd">    implement interfaces to an actual queuing system and cloud</span>
+<span class="sd">    backend.</span>
+
+<span class="sd">    The actual VM start/stop policy is defined by overriding methods</span>
+<span class="sd">    `is_new_vm_needed` and `can_vm_be_stopped`.  Each of these methods</span>
+<span class="sd">    can access a list of candidate jobs as attribute</span>
+<span class="sd">    `self.candidates`; the `can_vm_be_stopped` method is additionally</span>
+<span class="sd">    passed a `VmInfo` object and can inspect data from that VM.</span>
+
+<span class="sd">    The only method required to interface to a batch queueing system</span>
+<span class="sd">    is `get_sched_info`, which see for its interface and purpose.</span>
+
+<span class="sd">    The `cloud` argument must be an object that implements the interface</span>
+<span class="sd">    defined by the abstract class `vmmad.cloud.Cloud`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cloud</span><span class="p">,</span> <span class="n">max_vms</span><span class="p">,</span> <span class="n">max_delta</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+
+        <span class="c"># cloud provider</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span> <span class="o">=</span> <span class="n">cloud</span>
+        
+        <span class="c"># max number of VMs that are allocated on the cloud</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_vms</span> <span class="o">=</span> <span class="n">max_vms</span>
+
+        <span class="c"># max number of VMs that can be started each cycle</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_delta</span> <span class="o">=</span> <span class="n">max_delta</span>
+        
+        <span class="c"># list of VMs controlled by this `Orchestrator` instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c"># mapping jobid to job informations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span> <span class="o">=</span> <span class="p">{</span> <span class="p">}</span>
+
+        <span class="c"># VM book-keeping</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span> <span class="o">=</span> <span class="mi">0</span>
+        
+
+<div class="viewcode-block" id="Orchestrator.run"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">30</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the orchestrator until stopped.</span>
+
+<span class="sd">        Every `delay` seconds, the following operations are performed</span>
+<span class="sd">        in sequence:</span>
+<span class="sd">          - update job and VM status;</span>
+<span class="sd">          - start new VMs if needed;</span>
+<span class="sd">          - stop running VMs if they are no longer needed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before</span><span class="p">()</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">update_vm_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="p">)</span>
+
+            <span class="c"># start new VMs if needed</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_new_vm_needed</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_vms</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">new_vm</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="p">(</span><span class="n">vmid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span><span class="p">,</span> <span class="n">jobs</span><span class="o">=</span><span class="nb">set</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">start_vm</span><span class="p">(</span><span class="n">new_vm</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">new_vm</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_vm</span><span class="p">)</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Started VM </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span><span class="p">)</span>
+
+            <span class="c"># stop VMs that are no longer needed</span>
+            <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="nb">frozenset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_vm_be_stopped</span><span class="p">(</span><span class="n">vm</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">stop_vm</span><span class="p">(</span><span class="n">vm</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">vm</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">after</span><span class="p">()</span>
+
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="Orchestrator.before"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.before">[docs]</a>    <span class="k">def</span> <span class="nf">before</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Hook called at the start of the main run() cycle.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+</div>
+<div class="viewcode-block" id="Orchestrator.after"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.after">[docs]</a>    <span class="k">def</span> <span class="nf">after</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Hook called at the end of the main run() cycle.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+</div>
+    <span class="k">def</span> <span class="nf">update_job_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">jobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sched_info</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="p">(</span><span class="n">j</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">jobs</span> <span class="k">if</span> <span class="n">j</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">JobInfo</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">):</span>
+            <span class="c"># running jobs are no longer candidates</span>
+            <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">jobid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="p">(</span><span class="n">j</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">jobs</span> <span class="k">if</span> <span class="n">j</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">JobInfo</span><span class="o">.</span><span class="n">PENDING</span><span class="p">):</span>
+            <span class="c"># update candidates&#39; information</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_cloud_candidate</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">]</span> <span class="o">=</span> <span class="n">job</span>
+
+
+    <span class="c">##</span>
+    <span class="c">## interface to the batch queue scheduler</span>
+    <span class="c">##</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Orchestrator.get_sched_info"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.get_sched_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_sched_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Query the job scheduler and return a list of `JobInfo` objects</span>
+<span class="sd">        representing the jobs in the batch queue system.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+
+    <span class="c">##</span>
+    <span class="c">## policy implementation interface</span>
+    <span class="c">##</span></div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Orchestrator.is_cloud_candidate"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.is_cloud_candidate">[docs]</a>    <span class="k">def</span> <span class="nf">is_cloud_candidate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return `True` if `job` can be run in a cloud node.</span>
+
+<span class="sd">        Override in subclasses to define a different cloud-burst</span>
+<span class="sd">        policy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="Orchestrator.is_new_vm_needed"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.is_new_vm_needed">[docs]</a>    <span class="k">def</span> <span class="nf">is_new_vm_needed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Inspect job collection and decide whether we need to start new VMs.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Orchestrator.can_vm_be_stopped"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.can_vm_be_stopped">[docs]</a>    <span class="k">def</span> <span class="nf">can_vm_be_stopped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return `True` if the VM identified by `vm` is no longer</span>
+<span class="sd">        needed and can be stopped.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+
+
+<span class="c">## main: run tests</span>
+
+</div></div>
+<span class="k">if</span> <span class="s">&quot;__main__&quot;</span> <span class="o">==</span> <span class="n">__name__</span><span class="p">:</span>
+    <span class="c"># XXX: won&#39;t work, as Orchestrator is an abstract class</span>
+    <span class="n">Orchestrator</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Simon Barkow, Peter Kunszt, Sergio Maffioletti, Riccardo Murri, Christian Panse.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

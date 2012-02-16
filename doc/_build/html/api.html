@@ -120,6 +120,12 @@ representing the jobs in the batch queue system.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="orchestrator.Orchestrator.get_time_step">
+<tt class="descname">get_time_step</tt><big>(</big><big>)</big><a class="headerlink" href="#orchestrator.Orchestrator.get_time_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the variable used for incrementation of the time</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="orchestrator.Orchestrator.is_cloud_candidate">
 <tt class="descname">is_cloud_candidate</tt><big>(</big><em>job</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.is_cloud_candidate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.is_cloud_candidate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return <cite>True</cite> if <cite>job</cite> can be run in a cloud node.</p>
@@ -260,8 +266,8 @@ cluster status.</p>
 <dl class="function">
 <dt id="ge_info.get_sched_info">
 <tt class="descclassname">ge_info.</tt><tt class="descname">get_sched_info</tt><big>(</big><em>qstat_xml_out=None</em><big>)</big><a class="headerlink" href="#ge_info.get_sched_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse the output of a <cite>qstat -u ... -xml</cite> command and return a
-pair <cite>(running, pending)</cite>, where each item is a list of
+<dd><p>Parse the output of a <cite>qstat -xml</cite> command and return a
+tuple <cite>(jobid,submit_time,duration)</cite>, where each item is a list of
 dictionary-like objects whose keys/attributes directly map the
 XML contents.</p>
 </dd></dl>

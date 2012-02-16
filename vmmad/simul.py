@@ -40,31 +40,43 @@ from datetime import datetime
 
 # local imports
 from vmmad import log
-import cloud
+from vmmad.provider.libcloud import DummyCloud
 from orchestrator import Orchestrator, JobInfo, VmInfo
 
-class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
+
+class OrchestratorSimulation(Orchestrator, DummyCloud):
 
     def __init__(self, max_vms, max_delta, max_idle, startup_delay,
-                 job_number, min_duration, max_duration, output_file, csv_file, start_time, time_interval, cluster_size):
+                 job_number, min_duration, max_duration,
+                 output_file, csv_file, start_time, time_interval, cluster_size):
         # implement the `Cloud` interface to simulate a cloud provider
-        cloud.DummyCloud.__init__(self, '1', '1')
+        DummyCloud.__init__(self, '1', '1')
 
         # init the Orchestrator part, using `self` as cloud provider
         Orchestrator.__init__(self, self, max_vms, max_delta)
 
+        # no jobs are running at the onset, all are pending
+        self._running = [ ]             
+        
+        #Random generated pending jobs
+        #self._pending = [ JobInfo(jobid=random.randint(1,job_number*10),
+        #                          state=JobInfo.PENDING,
+        #                          duration=random.randint(min_duration, max_duration))
+        #                  for _ in range(0,job_number) ]
+        
+        self._pending = [ JobInfo(jobid=0, state=JobInfo.PENDING, duration=1) ]
+        
         # Convert starting time to UNIX time
         struct_time = time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )
         dt = datetime.fromtimestamp(mktime(struct_time))
         self.sched_time = int(mktime(dt.timetuple()))
-	
+
         # Set simulation settings
         self.max_idle = max_idle
         self.startup_delay = startup_delay
         self.output_file = output_file
         self.cluster_size = int(cluster_size) 
         self.time_interval = int(time_interval)
-        self.job_time_interval = int(time_interval)
         self._next_row = None
 
         # info about running VMs
@@ -79,11 +91,11 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
         self.csv_file = csv.reader(self.input_file, delimiter=' ')
 
     def update_job_status(self):
-        # do regular work	
+        # do regular work       
         Orchestrator.update_job_status(self)
         # simulate job run time passing and stop finished jobs
         for job in copy(self._running):
-            job.duration -= self.job_time_interval
+            job.duration -= self.job_iteration_interval
             if job.duration <= 0:
                 vm = job.vm
                 vm.jobs.remove(job.jobid)
@@ -177,7 +189,7 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
     ##
 
     def start_vm(self, vm):
-        cloud.DummyCloud.start_vm(self, vm)
+        DummyCloud.start_vm(self, vm)
         log.info("Started VM %d (%s).", vm.vmid, vm.instance.uuid)
         vm.been_running=0
         vm.total_idle=0
@@ -191,7 +203,7 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
             vm.last_idle=(-self.startup_delay)
 
     def update_vm_status(self, vms):
-        cloud.DummyCloud.update_vm_status(self, vms)
+        DummyCloud.update_vm_status(self, vms)
         for vm in self._started_vms:
             if not vm.ever_running:
                 vm.been_running += self.time_interval
@@ -205,7 +217,7 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
     def stop_vm(self, vm):
         log.info("Stopping VM %s (%s): has run for %d steps, been idle for %d of them",
                      vm.vmid, vm.instance.uuid, vm.been_running, vm.total_idle)
-        cloud.DummyCloud.stop_vm(self, vm)
+        DummyCloud.stop_vm(self, vm)
         if vm.last_idle > 0 and self._idle_vm_count > 0 and not vm.ever_running:
             self._idle_vm_count -= 1
         return True
