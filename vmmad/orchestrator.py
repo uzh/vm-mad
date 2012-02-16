@@ -21,6 +21,8 @@ Launch compute node VMs on demand.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import absolute_import
+
 __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
@@ -215,9 +217,9 @@ class Orchestrator(object):
 
         # VM book-keeping
         self._vmid = 0
-	
-	# Time simulation variable
-	self.time_step = 0        
+        
+        # Time simulation variable
+        self.time_step = 0        
 
     def run(self, delay=30):
         """
@@ -260,9 +262,9 @@ class Orchestrator(object):
         pass
 
     def get_time_step(self):
-	""" Returns the variable used for incrementation of the time """
-	self.time_step +=1
-	return self.time_step
+        """ Returns the variable used for incrementation of the time """
+        self.time_step +=1
+        return self.time_step
 
     def after(self):
         """Hook called at the end of the main run() cycle."""
@@ -270,7 +272,7 @@ class Orchestrator(object):
 
 
     def update_job_status(self):
-        jobs = self.get_sched_info()	
+        jobs = self.get_sched_info()    
         for job in (j for j in jobs if j.state == JobInfo.RUNNING):
             # running jobs are no longer candidates
             if job.jobid in self.candidates:
