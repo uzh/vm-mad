@@ -181,7 +181,9 @@ class EC2Cloud(CloudNodeProvider):
 
     def start_vm(self, vm):
         vm.instance = self.provider.create_node(
-            name=str(vm.vmid), image=self._images[self.image], size=self._kinds[self.kind])
+            name=str(vm.vmid), image=self._images[self.image],
+            size=self._kinds[self.kind],
+            ex_keyname='vm-mad', ex_securitygroup='vm-mad')
         vm.cloud = self.provider
         self._instance_to_vm_map[vm.instance.uuid] = vm
 
