@@ -116,8 +116,9 @@ class OrchestratorSimulation(Orchestrator, cloud.DummyCloud):
         with open((self.output_file), "a") as output:
             output.write(
                 "%s,%s,%s,%s,%s\n"
-                #  no. of steps,      pending jobs,       running jobs,            started VMs,            idle VMs,
-                %(self._steps, len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
+                #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
+                %(self.sched_time + (self.time_interval*self._steps), 
+                                      len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
                      (self.sched_time + self.time_interval*self._steps), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
