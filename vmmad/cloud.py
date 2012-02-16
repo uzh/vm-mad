@@ -152,13 +152,15 @@ class DummyCloud(Cloud):
     def start_vm(self, vm):
         vm.instance = self.provider.create_node(
             name=str(vm.vmid), image=self._images[self.image], size=self._kinds[self.kind])
+        assert vm.vmid not in self._instance_to_vm_map
         vm.cloud = self.provider
-        self._instance_to_vm_map[vm.instance.uuid] = vm
+        self._instance_to_vm_map[vm.vmid] = vm
         vm.state = VmInfo.UP
 
 
     def stop_vm(self, vm):
-        id = vm.instance.uuid
+        assert vm.vmid in self._instance_to_vm_map
+        id = vm.vmid
         self.provider.destroy_node(vm.instance)
         del self._instance_to_vm_map[id]
         vm.state = VmInfo.DOWN
