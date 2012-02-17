@@ -110,7 +110,7 @@ class Distil():
 if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Distils `qstat -xml` and SGE account info ')
     parser.add_argument('data_dir', help="Path to the directory contaning qstat output files.")
-    parser.add_argument('--output-file', '-O',  metavar='String', dest="output_file", default="output.csv", help="File name where the output of the distilation will be stored, %(default)s")
+    parser.add_argument('--output-file', '-o',  metavar='String', dest="output_file", default="accounting.csv", help="File name where the output of the distilation will be stored, %(default)s")
     parser.add_argument('--accounting-file', '-I',  metavar='String', dest="accounting_file", default="accounting", help="Input file with accounting information, %(default)s")
     parser.add_argument('--no-xml', '-nxml',  metavar='Boolean', dest="xml_parse", default=False , help="Disable parsing xml file, %(default)s")
     parser.add_argument('--version', '-V', action='version', version=("%(prog)s version " + __version__))
