@@ -42,7 +42,7 @@ setuptools.setup(
     name = "vmmad",
     version = "0.1.dev", # see: http://packages.python.org/distribute/setuptools.html
 
-    packages = setuptools.find_packages("vmmad", exclude=['ez_setup']),
+    packages = setuptools.find_packages(".", exclude=['ez_setup']),
 
     # metadata for upload to PyPI
     description = "A Python library and simple command-line frontend for computational job submission to multiple resources.",
