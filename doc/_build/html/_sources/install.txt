@@ -98,7 +98,7 @@ Installation into a virtualenv has two distinct advantages:
 
 4. Check-out the ``vm-mad`` files in a ``src/`` directory::
      
-       svn co http://vm-mad.googlecode.com/svn/trunk/vm-mad src
+       svn co http://vm-mad.googlecode.com/svn/trunk src
    
   
 5. Install the ``vm-mad`` in "develop" mode, so any modification

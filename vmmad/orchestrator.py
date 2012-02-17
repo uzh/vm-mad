@@ -227,9 +227,10 @@ class Orchestrator(object):
 
         Every `delay` seconds, the following operations are performed
         in sequence:
-          - update job and VM status;
-          - start new VMs if needed;
-          - stop running VMs if they are no longer needed.
+
+        - update job and VM status;
+        - start new VMs if needed;
+        - stop running VMs if they are no longer needed.
         """
         while True:
             self.before()
