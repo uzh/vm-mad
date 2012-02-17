@@ -48,13 +48,16 @@ from vmmad.orchestrator import JobInfo
 
 class Distil():
 
-    def __init__(self, data_dir, output_file, xml_parse, accounting_file=None):
+    def __init__(self, data_dir, output_file, xml_parse,
+                 accounting_file=None, output_delimiter=','):
 
         if accounting_file is not None:
             self.accounting_file = os.path.join(data_dir, accounting_file)
+        else:
+            self.accounting_file = None
         self.xml_parse = xml_parse
         self.output_file = output_file
-        # load data files
+        self.output_delimiter = output_delimiter
         ## load xml files
         self.qstat_xml_files = list(
             reversed(
@@ -73,28 +76,26 @@ class Distil():
                 with open(filename, 'r') as xml_file:
                     xml_data = xml_file.read()
             self.__jobs = ge_info.get_sched_info(xml_data)
-            f = open(self.output_file, 'w')
-            for job in self.__jobs:
-                if job.state == JobInfo.PENDING:
-                    # Convert the submit time to UNIX time
-                    struct_time = time.strptime(job.submit_time, "%Y-%m-%dT%H:%M:%S" )
-                    dt = datetime.fromtimestamp(mktime(struct_time))
-                    unix_sub_time = mktime(dt.timetuple())
-                    # Calculate the duration
-                    time_now = datetime.now()
-                    unix_time_now = mktime(time_now.timetuple())
-                    duration = unix_time_now - unix_sub_time
-                    # Write the results to file
-                    to_file = job.jobid + ' ' + str(unix_sub_time) + ' ' + str(duration)
-                    f.write(to_file)
-                    f.write('\n')
-            f.close()
-
+            with  open(self.output_file, 'w') as f:
+                csv_output = csv.writer(f, delimiter=self.output_delimiter)
+                for job in self.__jobs:
+                    if job.state == JobInfo.PENDING:
+                        # Convert the submit time to UNIX time
+                        struct_time = time.strptime(job.submit_time, "%Y-%m-%dT%H:%M:%S" )
+                        dt = datetime.fromtimestamp(mktime(struct_time))
+                        unix_sub_time = mktime(dt.timetuple())
+                        # Calculate the duration
+                        time_now = datetime.now()
+                        unix_time_now = mktime(time_now.timetuple())
+                        duration = unix_time_now - unix_sub_time
+                        # Write the results to file
+                        csv_output.writerow([job.jobid, unix_sub_time, duration])
 
     def parse_accounting_file(self):
         time_now = datetime.now()
         unix_time_now = int(mktime(time_now.timetuple()))
-        outputFile = csv.writer(open(self.output_file, 'wb'), delimiter=' ', quotechar='|')
+        outputFile = csv.writer(open(self.output_file, 'w'),
+                                delimiter=self.output_delimiter)
         for line in open(self.accounting_file,'r').readlines():
             arrgs = line.split(':')
             if len(arrgs) >= 11 and int(arrgs[8]) !=0:
@@ -113,8 +114,13 @@ if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Distils `qstat -xml` and SGE account info ')
     parser.add_argument('data_dir', help="Path to the directory contaning qstat output files.")
     parser.add_argument('--output-file', '-o',  metavar='String', dest="output_file", default="accounting.csv", help="File name where the output of the distilation will be stored, %(default)s")
+    parser.add_argument('--delimiter', '--output-delimiter', '-d', metavar='CHAR',
+                        dest='output_delimiter', default=',',
+                        help="Separator for the output fields.  Default: '%(default)s'")
     parser.add_argument('--accounting-file', '-I',  metavar='PATH', dest="accounting_file", default=None, help="Parse SGE 'accounting' file located at PATH.")
     parser.add_argument('--no-xml', '-nxml',  metavar='Boolean', dest="xml_parse", default=False , help="Disable parsing xml file, %(default)s")
     parser.add_argument('--version', '-V', action='version', version=("%(prog)s version " + __version__))
     args = parser.parse_args()
-    Distil(args.data_dir, args.output_file, args.xml_parse, args.accounting_file).run()
+    Distil(args.data_dir, args.output_file,
+           args.xml_parse, args.accounting_file,
+           output_delimiter=args.output_delimiter).run()
