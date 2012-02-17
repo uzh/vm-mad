@@ -73,12 +73,12 @@ setuptools.setup(
         "Topic :: System :: Distributed Computing",
         ],
 
-    entry_points = {
-        'console_scripts': [
-            # the generic, catch-all script:
-            'vm-mad = vmutils.frontend:main',
-            ],
-       },
+    #entry_points = {
+    #    'console_scripts': [
+    #        # the generic, catch-all script:
+    #        'vm-mad = vmutils.frontend:main',
+    #        ],
+    #   },
 
     # run-time dependencies
     install_requires = [
@@ -91,11 +91,11 @@ setuptools.setup(
         ],
 
     # additional non-Python files to be bundled in the package
-    package_data = {
-        'vmlibs': [
-            #'etc/vm-mad.conf.example',
-            ],
-        },
+    #package_data = {
+    #    'vmlibs': [
+    #        #'etc/vm-mad.conf.example',
+    #        ],
+    #    },
 
     # `zip_safe` can ease deployment, but is only allowed if the package
     # do *not* do any __file__/__path__ magic nor do they access package data
