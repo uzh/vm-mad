@@ -48,9 +48,10 @@ from vmmad.orchestrator import JobInfo
 
 class Distil():
 
-    def __init__(self, data_dir, output_file, xml_parse, accounting_file):
+    def __init__(self, data_dir, output_file, xml_parse, accounting_file=None):
 
-        self.accounting_file = os.path.join(data_dir, accounting_file) 
+        if accounting_file is not None:
+            self.accounting_file = os.path.join(data_dir, accounting_file)
         self.xml_parse = xml_parse
         self.output_file = output_file
         # load data files
@@ -104,14 +105,15 @@ class Distil():
         # Populate with the sched info. from the xml files.
         if self.xml_parse:
             self.parse_xml_files()
-        # populate with the sched info. from the accounting files
-        self.parse_accounting_file()
+        if self.accounting_file is not None:
+            # populate with the sched info. from the accounting files
+            self.parse_accounting_file()
 
 if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Distils `qstat -xml` and SGE account info ')
     parser.add_argument('data_dir', help="Path to the directory contaning qstat output files.")
     parser.add_argument('--output-file', '-o',  metavar='String', dest="output_file", default="accounting.csv", help="File name where the output of the distilation will be stored, %(default)s")
-    parser.add_argument('--accounting-file', '-I',  metavar='String', dest="accounting_file", default="accounting", help="Input file with accounting information, %(default)s")
+    parser.add_argument('--accounting-file', '-I',  metavar='PATH', dest="accounting_file", default=None, help="Parse SGE 'accounting' file located at PATH.")
     parser.add_argument('--no-xml', '-nxml',  metavar='Boolean', dest="xml_parse", default=False , help="Disable parsing xml file, %(default)s")
     parser.add_argument('--version', '-V', action='version', version=("%(prog)s version " + __version__))
     args = parser.parse_args()
