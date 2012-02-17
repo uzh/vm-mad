@@ -97,7 +97,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         Orchestrator.update_job_status(self)
         # simulate job run time passing and stop finished jobs
         for job in copy(self._running):
-            job.duration -= self.job_iteration_interval
+            job.duration -= self.time_interval
             if job.duration <= 0:
                 vm = job.vm
                 vm.jobs.remove(job.jobid)
