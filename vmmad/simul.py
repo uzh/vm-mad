@@ -85,19 +85,42 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         self._running = [ ]
         self._pending = [ JobInfo(jobid=1, state=JobInfo.PENDING, duration=0) ]
 
-        # open input file and auto-detect CSV delimiter, etc.
-        self.input_file = open(csv_file, 'r')
-        sample = self.input_file.read(1024)
-        self.input_file.seek(0)
-        self.csv_file = csv.DictReader(self.input_file,
-                                       dialect = csv.Sniffer().sniff(sample))
-
-        # Convert starting time to UNIX time
+        # Convert starting time to UNIX time (may read the first CSV file line)
         if start_time is not None: 
-            dt = datetime.fromtimestamp(mktime(time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )))
-            self.starting_time = int(mktime(dt.timetuple()))
-        else: 
-            self.starting_time = int(self.csv_file.next()[1])
+            self.starting_time = mktime(time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" ))
+        else:
+            # use an impossible value that makes us accept all jobs
+            # from the CSV file; will correct this later on
+            self.starting_time = -1
+            
+        # auto-detect CSV delimiter, etc.
+        with open(csv_file, 'r') as input_file:
+            sample = input_file.read(1024)
+            input_file.seek(0)
+            rows = csv.DictReader(input_file,
+                                  dialect = csv.Sniffer().sniff(sample))
+            # load all jobs into memory, ordered by descending
+            # submission time, so that the last item is the next job
+            # to be submitted and we can just .pop() it
+            self.__jobs = list(
+                sorted((JobInfo(jobid=row['JOBID'],
+                                state=JobInfo.PENDING,
+                                submitted_at=float(row['SUBMITTED_AT']),
+                                duration=float(row['RUN_DURATION']))
+                        for row in rows if float(row['SUBMITTED_AT']) > self.starting_time),
+                    # sort list of jobs by submission time
+                    cmp=(lambda x,y: cmp(x.submitted_at, y.submitted_at)),
+                    reverse=True))
+            assert self.__jobs[0].submitted_at >= self.__jobs[1].submitted_at
+        log.info("Loaded %d jobs from file '%s'", len(self.__jobs), csv_file)
+        
+        # if `starting_time` has not been set, then use earliest job
+        # submission time as starting point
+        if self.starting_time == -1:
+            self.starting_time = self.__jobs[-1].submitted_at - self.time_interval
+            log.info("Starting simulation at %s",
+                     time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime(self.starting_time)))
+
 
     def update_job_status(self):
         # do regular work       
@@ -130,8 +153,8 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
     def before(self):
         self._steps += 1
-        if len(self._running) == 0 and len(self._pending) == 0 and self.csv_file is None:
-            log.info("No more jobs to read from file '%s', stopping here", self.input_file.name)
+        if len(self._running) == 0 and len(self._pending) == 0 and len(self.__jobs) == 0:
+            log.info("No more jobs, stopping here")
             sys.exit(0)
             
         with open((self.output_file), "a") as output:
@@ -149,31 +172,24 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     ## Interface to the CSV file format
     ##
     def get_sched_info(self):
-        for job in self.read_next_jobs(self.starting_time + (self.time_step)*self.time_interval, 
-                                                            self.starting_time + (self.time_step+1)*self.time_interval): 
+        now = self.starting_time + self.time_step * self.time_interval
+        for job in self.next_jobs(now, now + self.time_step):
             self._pending.append(job)
         self.time_step +=1
         return (self._running + self._pending)
 
-    def read_next_jobs(self, since, until):
-        while self.csv_file is not None:
-            try:    
-                row = self._next_row or self.csv_file.next()
-            except StopIteration:
-                self.csv_file = None
-                raise
-            if since > row['SUBMITTED_AT']:
-                if since <= until:
-                    self._next_row = None
-                    yield JobInfo(jobid=row['JOBID'],
-                                  state=JobInfo.PENDING,
-                                  duration=int(row['RUN_DURATION']))
+    def next_jobs(self, since, until):
+        while len(self.__jobs) > 0:
+            job = self.__jobs.pop()
+            if since > job.submitted_at:
+                if job.submitted_at <= until:
+                    yield job
                 else:
                     # job is in the past (relative to the Simulator's conecpt of time) so ignore it
                     pass
             else:
-                # job is in the future: stop here and use it next time around
-                self._next_row = row
+                # job is in the future: put it back for next round
+                self.__jobs.append(job)
                 raise StopIteration
 
 
