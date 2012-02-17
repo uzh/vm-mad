@@ -76,33 +76,40 @@ class Distil():
                 with open(filename, 'r') as xml_file:
                     xml_data = xml_file.read()
             self.__jobs = ge_info.get_sched_info(xml_data)
-            with  open(self.output_file, 'w') as f:
-                csv_output = csv.writer(f, delimiter=self.output_delimiter)
-                for job in self.__jobs:
-                    if job.state == JobInfo.PENDING:
-                        # Convert the submit time to UNIX time
-                        struct_time = time.strptime(job.submit_time, "%Y-%m-%dT%H:%M:%S" )
-                        dt = datetime.fromtimestamp(mktime(struct_time))
-                        unix_sub_time = mktime(dt.timetuple())
-                        # Calculate the duration
-                        time_now = datetime.now()
-                        unix_time_now = mktime(time_now.timetuple())
-                        duration = unix_time_now - unix_sub_time
-                        # Write the results to file
-                        csv_output.writerow([job.jobid, unix_sub_time, duration])
+            for job in self.__jobs:
+                if job.state == JobInfo.PENDING:
+                    # Convert the submit time to UNIX time
+                    struct_time = time.strptime(job.submit_time, "%Y-%m-%dT%H:%M:%S" )
+                    dt = datetime.fromtimestamp(mktime(struct_time))
+                    unix_sub_time = mktime(dt.timetuple())
+                    # Calculate the duration
+                    time_now = datetime.now()
+                    unix_time_now = mktime(time_now.timetuple())
+                    duration = unix_time_now - unix_sub_time
+                    # Write the results to file
+                    self.csv_output.writerow([job.jobid, unix_sub_time, duration])
 
     def parse_accounting_file(self):
         time_now = datetime.now()
         unix_time_now = int(mktime(time_now.timetuple()))
-        outputFile = csv.writer(open(self.output_file, 'w'),
-                                delimiter=self.output_delimiter)
-        for line in open(self.accounting_file,'r').readlines():
-            arrgs = line.split(':')
-            if len(arrgs) >= 11 and int(arrgs[8]) !=0:
-                duration = int(arrgs[10]) - int(arrgs[9])
-                outputFile.writerow([arrgs[5]] + [(arrgs[8])] + [(duration)])
+        with open(self.accounting_file, 'r') as accounting:
+            for line in accounting:
+                fields = line.split(':')
+                if len(fields) >= 11 and int(fields[8]) !=0:
+                    jobid = fields[5]
+                    submitted_at = int(fields[8])
+                    running_at = int(fields[9])
+                    finished_at = int(fields[10])
+                    wait_duration = running_at - submitted_at
+                    run_duration = finished_at - running_at
+                    self.csv_output.writerow([jobid, submitted_at, running_at, finished_at,
+                                              wait_duration, run_duration])
 
     def run(self):
+        output_stream = open(self.output_file, 'w')
+        self.csv_output = csv.writer(output_stream, delimiter=self.output_delimiter)
+        self.csv_output.writerow(['JOBID', 'SUBMITTED_AT', 'RUNNING_AT', 'FINISHED_AT',
+                                  'WAIT_DURATION', 'RUN_DURATION'])
         # Populate with the sched info. from the xml files.
         if self.xml_parse:
             self.parse_xml_files()

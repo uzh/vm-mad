@@ -85,8 +85,12 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         self._running = [ ]
         self._pending = [ JobInfo(jobid=1, state=JobInfo.PENDING, duration=0) ]
 
+        # open input file and auto-detect CSV delimiter, etc.
         self.input_file = open(csv_file, 'r')
-        self.csv_file = csv.reader(self.input_file, delimiter=' ')
+        sample = self.input_file.read(1024)
+        self.input_file.seek(0)
+        self.csv_file = csv.DictReader(self.input_file,
+                                       dialect = csv.Sniffer().sniff(sample))
 
         # Convert starting time to UNIX time
         if start_time is not None: 
@@ -158,11 +162,12 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             except StopIteration:
                 self.csv_file = None
                 raise
-            submit_time = int(row[1])
-            if since > submit_time:
+            if since > row['SUBMITTED_AT']:
                 if since <= until:
                     self._next_row = None
-                    yield JobInfo(jobid=int(row[0]), state=JobInfo.PENDING, duration=int(row[2]))
+                    yield JobInfo(jobid=row['JOBID'],
+                                  state=JobInfo.PENDING,
+                                  duration=int(row['RUN_DURATION']))
                 else:
                     # job is in the past (relative to the Simulator's conecpt of time) so ignore it
                     pass
