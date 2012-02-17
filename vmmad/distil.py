@@ -29,11 +29,7 @@ __docformat__ = 'reStructuredText'
 __version__ = "1.0dev (SVN $Revision$)"
 
 
-import logging
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-
+# stdlib imports
 from copy import copy
 import random
 import os
