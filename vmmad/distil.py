@@ -42,6 +42,9 @@ import csv
 from time import mktime
 from datetime import datetime
 
+# local VM-MAD imports
+from vmmad.orchestrator import JobInfo
+
 
 class Distil():
 
@@ -71,7 +74,7 @@ class Distil():
             self.__jobs = ge_info.get_sched_info(xml_data)
             f = open(self.output_file, 'w')
             for job in self.__jobs:
-                if job.state == 1:
+                if job.state == JobInfo.PENDING:
                     # Convert the submit time to UNIX time
                     struct_time = time.strptime(job.submit_time, "%Y-%m-%dT%H:%M:%S" )
                     dt = datetime.fromtimestamp(mktime(struct_time))
