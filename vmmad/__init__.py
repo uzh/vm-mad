@@ -28,7 +28,7 @@ __version__ = '$Revision$'
 # set up default logging
 import logging
 logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: %(asctime)s: %(levelname)s: %(message)s',
+                    format='%(name)s: %(levelname)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 log = logging.getLogger(__package__)
 
