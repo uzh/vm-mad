@@ -56,7 +56,7 @@ class Distil():
             reversed(
                 sorted(os.path.join(data_dir, filename)
                     for filename in os.listdir(data_dir)
-                        if (filename.endswith('.xml') or filename.endswith('.gz')) )))
+                        if (filename.endswith('.xml') or filename.endswith('.xml.gz')) )))
         self.__jobs = [ ]
         self.__starting = 0
 
