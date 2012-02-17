@@ -68,11 +68,6 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         
         self._pending = [ JobInfo(jobid=0, state=JobInfo.PENDING, duration=1) ]
         
-        # Convert starting time to UNIX time
-        struct_time = time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )
-        dt = datetime.fromtimestamp(mktime(struct_time))
-        self.starting_time = int(mktime(dt.timetuple()))
-
         # Set simulation settings
         self.max_idle = max_idle
         self.startup_delay = startup_delay
@@ -80,6 +75,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         self.cluster_size = int(cluster_size) 
         self.time_interval = int(time_interval)
         self._next_row = None
+        self.time_step = 1
 
         # info about running VMs
         self._vmid = 0 
@@ -91,6 +87,13 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
         self.input_file = open(csv_file, 'r')
         self.csv_file = csv.reader(self.input_file, delimiter=' ')
+
+        # Convert starting time to UNIX time
+        if start_time is not None: 
+            dt = datetime.fromtimestamp(mktime(time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" )))
+            self.starting_time = int(mktime(dt.timetuple()))
+        else: 
+            self.starting_time = int(self.csv_file.next()[1])
 
     def update_job_status(self):
         # do regular work       
@@ -132,7 +135,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
                 "%s,%s,%s,%s,%s\n"
                 #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
                 %(self.starting_time + (self.time_interval*self._steps), 
-                                      len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
+                                        len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
                      (self.starting_time + self.time_interval*self._steps), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
@@ -142,11 +145,10 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     ## Interface to the CSV file format
     ##
     def get_sched_info(self):
-        time_step =  Orchestrator.get_time_step(self)
-        previous_time = self.starting_time + (time_step-1)*self.time_interval
-        new_time= self.starting_time + time_step*self.time_interval
-        for job in self.read_next_jobs(previous_time, new_time): 
+        for job in self.read_next_jobs(self.starting_time + (self.time_step)*self.time_interval, 
+                                                            self.starting_time + (self.time_step+1)*self.time_interval): 
             self._pending.append(job)
+        self.time_step +=1
         return (self._running + self._pending)
 
     def read_next_jobs(self, since, until):
@@ -238,7 +240,7 @@ if "__main__" == __name__:
     parser.add_argument('--csv-file', '-csvf',  metavar='String', dest="csv_file", default="output.csv", help="File containing the CSV information, %(default)s")
     parser.add_argument('--output-file', '-o',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s") 
     parser.add_argument('--cluster-size', '-cs',  metavar='NUM_CPUS', dest="cluster_size", default="20", help="Number of VMs, used for the simulation of real available cluster: %(default)s")
-    parser.add_argument('--start-time', '-stime',  metavar='String', dest="start_time", default="1970-01-01T00:00:00", help="Start time for the simulation, default: %(default)s")
+    parser.add_argument('--start-time', '-stime',  metavar='String', dest="start_time", default=None, help="Start time for the simulation, default: %(default)s")
     parser.add_argument('--time-interval', '-timei',  metavar='NUM_SECS', dest="time_interval", default="3600", help="UNIX interval in seconds used as parsing interval for the jobs in the CSV file, default: %(default)s")
     parser.add_argument('--version', '-V', action='version',
                         version=("%(prog)s version " + __version__))
