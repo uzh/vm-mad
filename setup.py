@@ -40,7 +40,7 @@ import setuptools
 import setuptools.dist
 setuptools.setup(
     name = "vmmad",
-    version = "0.1.dev", # see: http://packages.python.org/distribute/setuptools.html
+    version = "1.0.dev", # see: http://packages.python.org/distribute/setuptools.html
 
     packages = setuptools.find_packages(".", exclude=['ez_setup']),
 
