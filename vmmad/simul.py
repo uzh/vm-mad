@@ -71,8 +71,8 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         # Set simulation settings
         self.max_idle = max_idle
         self.startup_delay = startup_delay
-        self.output_file = output_file
         self.cluster_size = int(cluster_size) 
+        self.output_file = open(output_file, 'w')
         self.time_interval = int(time_interval)
         self._next_row = None
 
@@ -82,11 +82,6 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
       
         self._running = [ ]
         self._pending = [ JobInfo(jobid=1, state=JobInfo.PENDING, duration=0) ]
-
-        # Just open the file in write mode in order to overwrite previous one 
-        with open(self.output_file, 'w') as output: 
-            output.write("")
-            output.closed
 
         # Convert starting time to UNIX time (may read the first CSV file line)
         if start_time is not None: 
@@ -157,13 +152,13 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     def before(self):
         if len(self._running) == 0 and len(self._pending) == 0 and len(self.__jobs) == 0:
             log.info("No more jobs, stopping here")
-            sys.exit(0)
-            
-        with open((self.output_file), "a") as output:
-            output.write(
-                "%s,%s,%s,%s,%s\n"
+            self.output_file.close()
+            sys.exit(0)        
+    
+        self.output_file.write(
+            "%s,%s,%s,%s,%s\n"
                 #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
-                %(self.starting_time + (self.time_interval*self.cycle), 
+            %(self.starting_time + (self.time_interval*self.cycle), 
                                         len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
