@@ -219,7 +219,7 @@ class Orchestrator(object):
         self._vmid = 0
         
         # Time simulation variable
-        self.time_step = 0        
+        self.cycle = 0        
 
     def run(self, delay=30):
         """
@@ -253,9 +253,10 @@ class Orchestrator(object):
                         self._started_vms.remove(vm)
 
             self.after()
+            self.cycle +=1
 
             time.sleep(delay)
-
+            
 
     def before(self):
         """Hook called at the start of the main run() cycle."""
