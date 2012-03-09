@@ -71,8 +71,12 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         # Set simulation settings
         self.max_idle = max_idle
         self.startup_delay = startup_delay
-        self.cluster_size = int(cluster_size) 
-        self.output_file = open(output_file, 'w')
+        self.cluster_size = int(cluster_size)
+
+        self.output_file = open(output_file, "wb") 
+        self.writer = csv.writer(self.output_file, delimiter=',')
+        self.writer.writerow(['#TimeStamp'] + ['Pending Jobs'] + ['Running Jobs'] + ['Started VMs'] + ['Idle VMS'])
+           
         self.time_interval = int(time_interval)
         self._next_row = None
 
@@ -155,11 +159,10 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             self.output_file.close()
             sys.exit(0)        
     
-        self.output_file.write(
-            "%s,%s,%s,%s,%s\n"
+        self.writer.writerow(
                 #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
-            %(self.starting_time + (self.time_interval*self.cycle), 
-                                        len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count))
+            [self.starting_time + (self.time_interval*self.cycle), 
+                                        len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count])
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
                      (self.starting_time + self.time_interval*self.cycle), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
