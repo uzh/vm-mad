@@ -233,6 +233,8 @@ class Orchestrator(object):
         - stop running VMs if they are no longer needed.
         """
         while True:
+            t0 = time.time()
+            
             self.before()
             self.update_job_status()
             self.cloud.update_vm_status(self._started_vms)
@@ -255,7 +257,15 @@ class Orchestrator(object):
             self.after()
             self.cycle +=1
 
-            time.sleep(delay)
+            if delay > 0:
+                t1 = time.time()
+                elapsed = t1 - t0
+                if elapsed > delay:
+                    log.warning("Cycle %d took more than %.2f seconds!"
+                                " Starting new cycle without delay."
+                                % (self.cycle, delay))
+                else:
+                    time.sleep(delay - elapsed)
             
 
     def before(self):
