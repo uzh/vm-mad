@@ -55,7 +55,9 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         DummyCloud.__init__(self, '1', '1')
 
         # init the Orchestrator part, using `self` as cloud provider
-        Orchestrator.__init__(self, self, (max_vms+cluster_size), max_delta)
+        Orchestrator.__init__(self, cloud=self,
+                              max_vms=(max_vms+cluster_size),
+                              max_delta=max_delta)
 
         # no jobs are running at the onset, all are pending
         self._running = [ ]             
@@ -71,11 +73,12 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         # Set simulation settings
         self.max_idle = max_idle
         self.startup_delay = startup_delay
-        self.cluster_size = int(cluster_size)
+        self.cluster_size = cluster_size
 
         self.output_file = open(output_file, "wb") 
         self.writer = csv.writer(self.output_file, delimiter=',')
-        self.writer.writerow(['#TimeStamp'] + ['Pending Jobs'] + ['Running Jobs'] + ['Started VMs'] + ['Idle VMS'])
+        self.writer.writerow(
+            ['#TimeStamp'] + ['Pending Jobs'] + ['Running Jobs'] + ['Started VMs'] + ['Idle VMS'])
            
         self.time_interval = int(time_interval)
         self._next_row = None
@@ -139,7 +142,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
                     log.info("Job %s just finished; VM %s is now idle.",
                         job.jobid, vm.vmid)
         # simulate SGE scheduler starting a new job
-        for vm in self._started_vms:
+        for vm in self._started_vms.values():
             if vm.last_idle > 0:
                 if not self._pending:
                     break
@@ -161,8 +164,13 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     
         self.writer.writerow(
                 #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
+<<<<<<< HEAD
             [self.starting_time + (self.time_interval*self.cycle), 
                                         len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count])
+=======
+            %(self.starting_time + (self.time_interval*self.cycle), 
+                                      len(self._pending), len(self._running),      len(self._started_vms), self._idle_vm_count))
+>>>>>>> Call cloud provider methods (potentiually blocking) asynchronously.
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
                      (self.starting_time + self.time_interval*self.cycle), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
@@ -204,8 +212,10 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             return True
 
     def can_vm_be_stopped(self, vm):
-        if vm.last_idle > self.max_idle:
+        if not vm.ever_running and (vm.last_idle > self.max_idle):
             return True
+        else:
+            return False
 
 
     ##
@@ -214,7 +224,6 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
     def start_vm(self, vm):
         DummyCloud.start_vm(self, vm)
-        log.info("Started VM %d (%s).", vm.vmid, vm.instance.uuid)
         vm.been_running=0
         vm.total_idle=0
 
@@ -225,10 +234,11 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         else:
             vm.ever_running = False 
             vm.last_idle=(-self.startup_delay)
+        log.info("Started VM %d (%s).", vm.vmid, vm.instance.uuid)
 
     def update_vm_status(self, vms):
         DummyCloud.update_vm_status(self, vms)
-        for vm in self._started_vms:
+        for vm in self._started_vms.values():
             if not vm.ever_running:
                 vm.been_running += self.time_interval
                 if not vm.jobs:

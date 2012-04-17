@@ -29,6 +29,7 @@ __version__ = '$Revision$'
 
 # stdlib imports
 from abc import abstractmethod
+import multiprocessing.dummy as mp
 import os
 import sys
 import time
@@ -196,10 +197,19 @@ class Orchestrator(object):
 
     The `cloud` argument must be an object that implements the interface
     defined by the abstract class `vmmad.cloud.Cloud`.
+
+    The `threads` argument specifies the size of the thread pool that
+    is used to perform blocking operations.
     """
 
-    def __init__(self, cloud, max_vms, max_delta=1):
+    def __init__(self, cloud, max_vms, max_delta=1, threads=8):
 
+        # thread pool to enqueue blocking operations
+        self._par = mp.Pool(threads)
+
+        # allocator for shared memory objects
+        self._shm = mp.Manager()
+        
         # cloud provider
         self.cloud = cloud
         
@@ -209,8 +219,8 @@ class Orchestrator(object):
         # max number of VMs that can be started each cycle
         self.max_delta = max_delta
         
-        # list of VMs controlled by this `Orchestrator` instance
-        self._started_vms = set()
+        # VMs controlled by this `Orchestrator` instance (indexed by VMID)
+        self._started_vms = self._shm.dict()
 
         # mapping jobid to job informations
         self.candidates = { }
@@ -219,7 +229,8 @@ class Orchestrator(object):
         self._vmid = 0
         
         # Time simulation variable
-        self.cycle = 0        
+        self.cycle = 0
+
 
     def run(self, delay=30):
         """
@@ -237,22 +248,19 @@ class Orchestrator(object):
             
             self.before()
             self.update_job_status()
-            self.cloud.update_vm_status(self._started_vms)
+            # XXX: potentially blocking - should timeout!
+            self.cloud.update_vm_status(self._started_vms.values())
 
             # start new VMs if needed
             if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
                 self._vmid += 1
-                new_vm = VmInfo(vmid=self._vmid, jobs=set())
-                self.cloud.start_vm(new_vm)
-                if new_vm.is_alive():
-                    self._started_vms.add(new_vm)
-                    log.info("Started VM %s", self._vmid)
+                new_vm = VmInfo(vmid=self._vmid, jobs=set(), state=VmInfo.STARTING)
+                self._par.apply_async(self._asynch_start_vm, (new_vm,))
 
             # stop VMs that are no longer needed
-            for vm in frozenset(self._started_vms):
+            for vm in self._started_vms.values():
                 if self.can_vm_be_stopped(vm):
-                    if self.cloud.stop_vm(vm):
-                        self._started_vms.remove(vm)
+                    self._par.apply_async(self._asynch_stop_vm, (vm,))
 
             self.after()
             self.cycle +=1
@@ -266,6 +274,35 @@ class Orchestrator(object):
                                 % (self.cycle, delay))
                 else:
                     time.sleep(delay - elapsed)
+
+    def _asynch_start_vm(self, vm):
+        assert vm.vmid not in self._started_vms
+        log.info("Starting VM %s ...", vm.vmid)
+        try:
+            self.cloud.start_vm(vm)
+            self._started_vms[vm.vmid] = vm
+            log.info("VM %s started, waiting for 'up' notification.", vm.vmid)
+        except Exception, ex:
+            vm.state = VmInfo.DOWN
+            log.error("Error starting VM %s: %s: %s",
+                      vm.vmid, ex.__class__.__name__, str(ex))
+            if vm.vmid in self._started_vms:
+                del _started_vms[vm.vmid]
+
+    def _asynch_stop_vm(self, vm):
+        log.info("Stopping VM %s ...", vm.vmid)
+        try:
+            self.cloud.stop_vm(vm)
+            del self._started_vms[vm.vmid]
+            log.info("Stopped VM %s.", vm.vmid)
+        except Exception, ex:
+            # XXX: This is more delicate than catching errors in the
+            # startup phase: if a VM was not stopped when it should
+            # have been, we run the chance of being billed from the
+            # cloud provider for services we do not use any longer.
+            # What's the correct course of action?
+            log.error("Error stopping VM %s: %s: %s",
+                      vm.vmid, ex.__class__.__name__, str(ex))
             
 
     def before(self):
