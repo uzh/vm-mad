@@ -251,7 +251,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Simulates a cloud orchestrator')
     parser.add_argument('--max-vms', '-mv', metavar='N', dest="max_vms", default=10, type=int, help="Maximum number of VMs to be started, default is %(default)s")
-    parser.add_argument('--max-delta', '-md', metavar='N', dest="max_delta", default=1, type=int, help="To be defined")    
+    parser.add_argument('--max-delta', '-md', metavar='N', dest="max_delta", default=1, type=int, help="Cap the number of VMs that can be started or stopped in a single orchestration cycle. Default is %(default)d.")    
     parser.add_argument('--max-idle', '-mi', metavar='NUM_SECS', dest="max_idle", default=7200, type=int, help="Maximum idle time (in seconds) before swithing off a VM, default is %(default)s")
     parser.add_argument('--startup-delay', '-s', metavar='NUM_SECS', dest="startup_delay", default=3600, type=int, help="Time (in seconds) delay before staring up a VM, default is %(default)s")
     parser.add_argument('--job-number', '-jn', metavar='N', dest="job_number", default=50, type=int, help="Number of job to be started, default is %(default)s")
