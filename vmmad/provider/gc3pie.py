@@ -43,6 +43,7 @@ from vmmad import log
 from vmmad.orchestrator import VmInfo
 from vmmad.provider import NodeProvider
 
+
 class VmmadAppPot(gc3libs.Application):
         def __init__(self, vmid):
             vm_output_dir=("smscg.vm.%s" % vmid)
@@ -60,8 +61,8 @@ class VmmadAppPot(gc3libs.Application):
                 requested_architecture = gc3libs.Run.Arch.X86_64,
                 memory = 2,)
 
-class SmscgProvider(NodeProvider):
 
+class SmscgProvider(NodeProvider):
     """
     Interface for submiting VM as job to the SMSCG infrastructure 
     """
@@ -73,33 +74,27 @@ class SmscgProvider(NodeProvider):
         log.debug("Creating and submiting a VM as job to the SMSCG infrastructure...")
 
         self.g = gc3libs.core.Core(* gc3libs.core.import_config(gc3libs.Default.CONFIG_FILE_LOCATIONS, True))
-        self.store = gc3pie.persistence.FilesystemStore(self.__class__.__name__ + ".jobs")
-
-        # associate the Node ID we get from the cloud provider with
-        # the VM object we get from the orchestrator
-        self._instance_to_vm_map = { }
 
 
     def start_vm(self, vm):
         """
         Start a VM as a job to the SMSCG infrastructure
         """
-        # Insert the node in the list
-        vm.instance = self.provider.create_node(
-            name=str(vm.vmid), image=self._images[self.image], size=self._kinds[self.kind])
         # Start the job to the SMSCG infrastructure 
         vm.gc3pie_app = VmmadAppPot(vm.vmid)
         self.g.submit(vm.gc3pie_app)
-        self._instance_to_vm_map[vm.vmid] = vm
+
     
     def update_vm_status(self, vms):
         """
         Update the status of a VM (get the status of the job)
         """
-        nodes = [ node for node in self.provider.list_nodes()
-            if node.id in self._instance_to_vm_map ]
-        for node in nodes:
+        for vm in vms:
+            if 'gc3pie_app' not in vm:
+                continue # not a GC3Pie-controlled VM
+            # FIXME: `g.update_job_state` could raise an exception, should catch and ignore
             self.g.update_job_state(vm.gc3pie_app)
+            # map GC3Pie status to `orchestrator.VmInfo.state` value
             if vm.gc3pie_app.execution.state == gc3libs.Run.State.RUNNING:
                 vm.state = VmInfo.UP
             elif vm.gc3pie_app.execution.state in [ gc3libs.Run.State.TERMINATING, gc3libs.Run.State.TERMINATED ]:
@@ -107,13 +102,12 @@ class SmscgProvider(NodeProvider):
             elif vm.gc3pie_app.execution.state == gc3libs.Run.State.STOPPED:
                 vm.state = VmInfo.OTHER
 
+
     def stop_vm(self, vm):
         """
         Kill the VM by kill the job
         """
-        assert vm.vmid in self._instance_to_vm_map
-        g.kill(self.app) 
-        g.fetch_output(app)
-        g.free(app)
-        del self._instance_to_vm_map[vm.vmid]
+        g.kill(vm.gc3pie_app) 
+        g.fetch_output(vm.gc3pie_app)
+        g.free(vm.gc3pie_app)
         vm.state = VmInfo.DOWN
