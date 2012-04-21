@@ -163,14 +163,9 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             sys.exit(0)        
     
         self.writer.writerow(
-                #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
-<<<<<<< HEAD
+            #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
             [self.starting_time + (self.time_interval*self.cycle), 
-                                        len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count])
-=======
-            %(self.starting_time + (self.time_interval*self.cycle), 
-                                      len(self._pending), len(self._running),      len(self._started_vms), self._idle_vm_count))
->>>>>>> Call cloud provider methods (potentiually blocking) asynchronously.
+                                  len(self._pending), len(self._running),      len(self._started_vms), self._idle_vm_count])
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
                      (self.starting_time + self.time_interval*self.cycle), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
