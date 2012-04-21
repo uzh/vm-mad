@@ -280,6 +280,9 @@ class Orchestrator(object):
         # Time simulation variable
         self.cycle = 0
 
+        # Time the job statuses were last checked
+        self.last_update = 0
+
 
     def run(self, delay=30, max_cycles=0):
         """
@@ -380,25 +383,47 @@ class Orchestrator(object):
         pass
 
 
-    def update_job_status(self):
-        jobs = self.batchsys.get_sched_info()    
+    def time(self):
+        """
+        Return the current time in UNIX epoch format.
 
+        This method exists only for the purpose of overriding it
+        insimulator classes, so that a 'virtual' time can be
+        implemented.
+        """
+        return time.time()
+
+
+    def update_job_status(self):
+        """
+        Update job information based on what the batch system interface returns.
+
+        Return the full list of active job objects (i.e., not just the
+        candidates for cloud execution).
+        """
+        now = self.time()
+        jobs = self.batchsys.get_sched_info()    
+        
         # remove finished jobs
         jobids = set(job.jobid for job in jobs)
         for vm in self._active_vms.itervalues():
             # remove jobs that are no longer in the list, i.e., they are finished
-            vm.jobs -= (vm.jobs - jobids)
+            terminated = (vm.jobs - jobids)
+            for jobid in terminated:
+                log.info("Job %s terminated its execution on node '%s'", jobid, vm.vmid)
+            vm.jobs -= terminated
 
         # update info on running jobs
         for job in jobs:
-            if job.state == JobInfo.RUNNING:
-                # running jobs are no longer candidates
+            if job.state == JobInfo.RUNNING and job.running_at > self.last_update:
+                log.info("Job %s was started on node '%s'", job.jobid, job.exec_node_name)
+                # job just went running, it's longer a candidate
                 if job.jobid in self.candidates:
                     del self.candidates[job.jobid]
                 # record which jobs are running on which VM
                 if job.exec_node_name in self._active_vms:
                     self._active_vms[job.exec_node_name].jobs.add(job.jobid)
-            elif job.state == JobInfo.PENDING:
+            elif job.state == JobInfo.PENDING and job.submitted_at > self.last_update:
                 # update candidates' information
                 if self.is_cloud_candidate(job):
                     self.candidates[job.jobid] = job
@@ -406,6 +431,9 @@ class Orchestrator(object):
                 # ignore
                 pass
 
+        self.last_update = now
+        return jobs
+    
 
     def vm_is_ready(self, vmid, nodename):
         """
