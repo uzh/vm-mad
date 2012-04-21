@@ -106,17 +106,25 @@ class DummyCloud(CloudNodeProvider):
     def start_vm(self, vm):
         vm.instance = self.provider.create_node(
             name=str(vm.vmid), image=self._images[self.image], size=self._kinds[self.kind])
-        assert vm.vmid not in self._instance_to_vm_map
+        uuid = vm.instance.uuid
+        assert uuid not in self._instance_to_vm_map, (
+            "Instance UUID %s already registered as belonging to VM %s"
+            % (uuid, vm.vmid))
         vm.cloud = self.provider
-        self._instance_to_vm_map[vm.vmid] = vm
+        self._instance_to_vm_map[uuid] = vm
+        assert uuid in self._instance_to_vm_map, (
+            "BUG: Instance UUID %s has not been inserted in `self._instance_to_vm_map`"
+            % uuid)
         vm.state = VmInfo.UP
 
 
     def stop_vm(self, vm):
-        assert vm.vmid in self._instance_to_vm_map
-        id = vm.vmid
+        uuid = vm.instance.uuid
+        assert uuid in self._instance_to_vm_map, (
+            "Instance UUID %s (of VM %s) not registered to any instance!"
+            % (uuid, vm.vmid))
         self.provider.destroy_node(vm.instance)
-        del self._instance_to_vm_map[id]
+        del self._instance_to_vm_map[uuid]
         vm.state = VmInfo.DOWN
 
 
@@ -193,9 +201,9 @@ class EC2Cloud(CloudNodeProvider):
         #   1. gracefully shutdown the node, and (after a timeout) proceed to:
         #   2. destroy the node
         # In addition this should not block the main Orchestrator thread.
-        id = vm.instance.uuid
+        uuid = vm.instance.uuid
         self.provider.destroy_node(vm.instance)
-        del self._instance_to_vm_map[id]
+        del self._instance_to_vm_map[uuid]
 
 
     def update_vm_status(self, vms):
