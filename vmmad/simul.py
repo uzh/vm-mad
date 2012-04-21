@@ -116,8 +116,8 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
                     # sort list of jobs by submission time
                     cmp=(lambda x,y: cmp(x.submitted_at, y.submitted_at)),
                     reverse=True))
-            assert self.__jobs[0].submitted_at >= self.__jobs[1].submitted_at
         log.info("Loaded %d jobs from file '%s'", len(self.__jobs), csv_file)
+        assert len(self.__jobs) < 2 or (self.__jobs[0].submitted_at >= self.__jobs[1].submitted_at)
         
         # if `starting_time` has not been set, then use earliest job
         # submission time as starting point
