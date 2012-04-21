@@ -305,7 +305,7 @@ class Orchestrator(object):
             # start new VMs if needed
             if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
                 self._vmid += 1
-                new_vm = VmInfo(vmid=self._vmid, jobs=set(), state=VmInfo.STARTING)
+                new_vm = VmInfo(vmid=str(self._vmid), state=VmInfo.STARTING)
                 self._par.apply_async(self._asynch_start_vm, (new_vm,))
 
             # stop VMs that are no longer needed
