@@ -150,7 +150,7 @@ class VmInfo(Struct):
     private_ip    str       private IP address in dot quad notation
     cloud         str       cloud identifier
     started_at    datetime  when the request to start the machine was issued
-    up_at         datetime  when the machine was first detected up and running
+    ready_at      datetime  when the machine was first detected up and running
     running_time  duration  total running time (in seconds)
     bill          float     total cost to be billed by cloud provider (in US$)
     ============  ========  ================================================
@@ -247,7 +247,6 @@ class Orchestrator(object):
     """
 
     def __init__(self, cloud, batchsys, max_vms, max_delta=1, threads=8):
-
         # thread pool to enqueue blocking operations
         self._par = mp.Pool(threads)
 
@@ -344,6 +343,7 @@ class Orchestrator(object):
         log.info("Starting VM %s ...", vm.vmid)
         try:
             self.cloud.start_vm(vm)
+            vm.started_at = time.time()
             self._started_vms[vm.vmid] = vm
             log.info("VM %s started, waiting for 'READY' notification.", vm.vmid)
         except Exception, ex:
@@ -357,6 +357,7 @@ class Orchestrator(object):
         log.info("Stopping VM %s ...", vm.vmid)
         try:
             self.cloud.stop_vm(vm)
+            vm.stopped_at = time.time()
             del self._stopping_vms[vm.vmid]
             log.info("Stopped VM %s.", vm.vmid)
         except Exception, ex:
@@ -419,6 +420,7 @@ class Orchestrator(object):
         vm = self._started_vms[vmid]
         assert vm.state in [ VmInfo.STARTING, VmInfo.UP ]
         vm.state = VmInfo.READY
+        vm.ready_at = time.time()
         vm.nodename = nodename
         self._active_vms[nodename] = vm
         log.info("VM %s reports being ready as node '%s'", vmid, nodename)
