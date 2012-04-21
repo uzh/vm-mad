@@ -54,8 +54,8 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         # implement the `Cloud` interface to simulate a cloud provider
         DummyCloud.__init__(self, '1', '1')
 
-        # init the Orchestrator part, using `self` as cloud provider
-        Orchestrator.__init__(self, cloud=self,
+        # init the Orchestrator part, using `self` as cloud provider and batch system interface
+        Orchestrator.__init__(self, cloud=self, batchsys=self,
                               max_vms=(max_vms+cluster_size),
                               max_delta=max_delta)
 

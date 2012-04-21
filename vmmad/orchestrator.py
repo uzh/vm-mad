@@ -192,17 +192,18 @@ class Orchestrator(object):
     `self.candidates`; the `can_vm_be_stopped` method is additionally
     passed a `VmInfo` object and can inspect data from that VM.
 
-    The only method required to interface to a batch queueing system
-    is `get_sched_info`, which see for its interface and purpose.
-
     The `cloud` argument must be an object that implements the interface
     defined by the abstract class `vmmad.cloud.Cloud`.
+
+    The `batchsys` argument must be an object that implements the
+    interface defined by the abstract class
+    `vmmad.batchsys.BatchSystem`:class: (which see for details).
 
     The `threads` argument specifies the size of the thread pool that
     is used to perform blocking operations.
     """
 
-    def __init__(self, cloud, max_vms, max_delta=1, threads=8):
+    def __init__(self, cloud, batchsys, max_vms, max_delta=1, threads=8):
 
         # thread pool to enqueue blocking operations
         self._par = mp.Pool(threads)
@@ -212,6 +213,9 @@ class Orchestrator(object):
         
         # cloud provider
         self.cloud = cloud
+
+        # batch system interface
+        self.batchsys = batchsys
         
         # max number of VMs that are allocated on the cloud
         self.max_vms = max_vms
@@ -317,7 +321,7 @@ class Orchestrator(object):
 
 
     def update_job_status(self):
-        jobs = self.get_sched_info()    
+        jobs = self.batchsys.get_sched_info()    
         for job in (j for j in jobs if j.state == JobInfo.RUNNING):
             # running jobs are no longer candidates
             if job.jobid in self.candidates:
@@ -328,17 +332,6 @@ class Orchestrator(object):
             if self.is_cloud_candidate(job):
                 self.candidates[job.jobid] = job
 
-
-    ##
-    ## interface to the batch queue scheduler
-    ##
-    @abstractmethod
-    def get_sched_info(self):
-        """
-        Query the job scheduler and return a list of `JobInfo` objects
-        representing the jobs in the batch queue system.
-        """
-        pass
 
     ##
     ## policy implementation interface
