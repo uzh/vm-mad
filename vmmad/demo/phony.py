@@ -57,18 +57,10 @@ class DemoOrchestrator(OrchestratorWebApp):
             self,
             delay=5,
             cloud=DummyCloud('1', '1'),
-            batchsys=self,
+            batchsys=RandomJobs(3, 0.25),
             max_vms=10)
         
 
-    ##
-    ## batch system simulation
-    ##
-
-    def get_sched_info(self):
-        return self.__jobs
-
-        
     ##
     ## policy implementation interface
     ##
