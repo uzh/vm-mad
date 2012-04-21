@@ -232,9 +232,9 @@ class Orchestrator(object):
         self.cycle = 0
 
 
-    def run(self, delay=30):
+    def run(self, delay=30, max_cycles=0):
         """
-        Run the orchestrator until stopped.
+        Run the orchestrator main loop until stopped or `max_cycles` reached.
 
         Every `delay` seconds, the following operations are performed
         in sequence:
@@ -243,7 +243,8 @@ class Orchestrator(object):
         - start new VMs if needed;
         - stop running VMs if they are no longer needed.
         """
-        while True:
+        done = 0
+        while max_cycles == 0 or done < max_cycles:
             t0 = time.time()
             
             self.before()
@@ -264,6 +265,7 @@ class Orchestrator(object):
 
             self.after()
             self.cycle +=1
+            done += 1
 
             if delay > 0:
                 t1 = time.time()
