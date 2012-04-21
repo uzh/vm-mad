@@ -80,59 +80,59 @@ EXAMPLE_QSTAT_XML_OUTPUT = """<?xml version='1.0'?>
 class TestGEInfo(unittest.TestCase):
 
     def test_jobs_number(self):
-        jobs = ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
         running = [job for job in jobs if job.state == JobInfo.RUNNING]
         pending = [job for job in jobs if job.state == JobInfo.PENDING]
         self.assertEqual(len(running), 2)
         self.assertEqual(len(pending), 1)
  
     def test_job_object_class(self):
-        jobs = ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
         for job in jobs:
             self.assertIsInstance(job, JobInfo)
  
     def test_running_job_attribute_types(self):
-        jobs = ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
         running = [job for job in jobs if job.state == JobInfo.RUNNING]
         self.assertTrue(len(running) > 0)
         for job in running:
             self.assertTrue(isinstance(job.JAT_prio, float))
-            self.assertTrue(isinstance(job.jobid, int))
+            self.assertTrue(isinstance(job.jobid, str))
             self.assertTrue(isinstance(job.JB_name, str))
             self.assertTrue(isinstance(job.queue_name, str))
             self.assertTrue(isinstance(job.exec_node_name, str))
             #self.assertTrue(isinstance(job.state, str))
 
     def test_running_job_attribute_values(self):
-        jobs = ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
         running = [job for job in jobs if job.state == JobInfo.RUNNING]
         self.assertTrue(len(running) > 0)
         job = running[0]
         self.assertEqual(job.state, JobInfo.RUNNING)
-        self.assertEqual(job.jobid, 389524)
+        self.assertEqual(job.jobid, '389524')
         self.assertEqual(job.JB_name, 'QRLOGIN')
         self.assertEqual(job.queue_name, 'cloud@fgcz-cloud-002')
         self.assertEqual(job.exec_node_name, 'fgcz-cloud-002')
 
     def test_pending_job_attribute_types(self):
-        jobs = ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
         pending = [job for job in jobs if job.state == JobInfo.PENDING]
         self.assertTrue(len(pending) > 0)
         for job in pending:
             self.assertTrue(isinstance(job.JAT_prio, float))
-            self.assertTrue(isinstance(job.jobid, int))
+            self.assertTrue(isinstance(job.jobid, str))
             self.assertTrue(isinstance(job.JB_name, str))
             self.assertTrue(job.queue_name is None)
             self.assertTrue(job.exec_node_name is None)
 
     def test_pending_job_attribute_values(self):
-        jobs = ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
         pending = [job for job in jobs if job.state == JobInfo.PENDING]
         self.assertTrue(len(pending) > 0)
         job = pending[0]
         self.assertEqual(job.state, JobInfo.PENDING)
         self.assertEqual(job.JAT_prio, 0.505)
-        self.assertEqual(job.jobid, 389632)
+        self.assertEqual(job.jobid, '389632')
         self.assertEqual(job.JB_name, 'STDIN')
         self.assertEqual(job.queue_name, None)
         self.assertEqual(job.exec_node_name, None)
