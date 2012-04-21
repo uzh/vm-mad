@@ -294,6 +294,7 @@ class Orchestrator(object):
         """
         done = 0
         while max_cycles == 0 or done < max_cycles:
+            log.debug("Orchestrator %x about to start cycle %d", id(self), self.cycle)
             t0 = time.time()
             
             self.before()
