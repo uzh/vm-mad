@@ -134,20 +134,25 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         for job in copy(self._running):
             job.duration -= self.time_interval
             if job.duration <= 0:
-                vm = job.vm
-                vm.jobs.remove(job.jobid)
                 self._running.remove(job)
-                if not vm.ever_running:
-                    self._idle_vm_count += 1
-                    log.info("Job %s just finished; VM %s is now idle.",
-                        job.jobid, vm.vmid)
-        # simulate SGE scheduler starting a new job
+                vm = job.vm
+                log.info("Job %s just finished; VM %s is now idle.",
+                         job.jobid, vm.vmid)
+        # simulate 'ready' notification from VMs
         for vm in self._started_vms.values():
+            if vm.last_idle >= 0 and vm.state != VmInfo.READY:
+                if vm.ever_running:
+                    nodename = ("clusternode-%d" % vm.vmid)
+                else:
+                    nodename = ("vm-%d" % (vm.vmid - self.cluster_size))
+                self.vm_is_ready(vm.vmid, nodename)
+        # simulate SGE scheduler starting a new job
+        for vm in self._active_vms.values():
             if vm.last_idle > 0:
                 if not self._pending:
                     break
                 job = self._pending.pop()
-                vm.jobs.add(job.jobid)
+                job.exec_node_name = vm.nodename
                 job.vm = vm
                 vm.last_idle = 0
                 if not vm.ever_running: 
@@ -207,7 +212,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             return True
 
     def can_vm_be_stopped(self, vm):
-        if not vm.ever_running and (vm.last_idle > self.max_idle):
+        if (not vm.ever_running and (vm.last_idle > self.max_idle) and len(vm.jobs) == 0):
             return True
         else:
             return False
@@ -234,20 +239,23 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     def update_vm_status(self, vms):
         DummyCloud.update_vm_status(self, vms)
         for vm in self._started_vms.values():
-            if not vm.ever_running:
-                vm.been_running += self.time_interval
-                if not vm.jobs:
-                    vm.total_idle += self.time_interval
-                    vm.last_idle += self.time_interval
-            else:
-                if not vm.jobs:
-                    vm.last_idle = 1  
+            vm.been_running += self.time_interval
+            if not vm.jobs:
+                vm.total_idle += self.time_interval
+                vm.last_idle += self.time_interval
 
     def stop_vm(self, vm):
-        log.info("Stopping VM %s (%s): has run for %d steps, been idle for %d of them",
-                     vm.vmid, vm.instance.uuid, vm.been_running, vm.total_idle)
+        assert not vm.ever_running, (
+            "Request to stop VM %s which is marked as 'ever running'"
+            % vm.vmid)
+        log.info("Stopping VM %s (%s):"
+                 " has run for %d steps, been idle for %d of them (%.2f%%)",
+                 vm.vmid, vm.instance.uuid, vm.been_running, vm.total_idle,
+                 (100.0 * vm.total_idle / vm.been_running))
+        if len(vm.jobs) > 0:
+            log.warning("VM %s still running jobs: %s", vm.vmid, str.join(' ', vm.jobs))
         DummyCloud.stop_vm(self, vm)
-        if vm.last_idle > 0 and self._idle_vm_count > 0 and not vm.ever_running:
+        if vm.last_idle > 0 and self._idle_vm_count > 0:
             self._idle_vm_count -= 1
         return True
 

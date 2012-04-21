@@ -129,6 +129,7 @@ class VmInfo(Struct):
     STARTING  A request to start the VM has been sent to the Cloud provider,
               but the VM is not ready yet.
     UP        The machine is up and running, and connected to the network.
+    READY     The machine is ready to run jobs.
     STOPPING  The remote VM has been frozen, but normal execution can be resumed.
     DOWN      The VM has been stopped and cannot be restarted/resumed.
     OTHER     Unexpected/unhandled state; usually signals an error.
@@ -149,10 +150,23 @@ class VmInfo(Struct):
     running_time  duration  total running time (in seconds)
     bill          float     total cost to be billed by cloud provider (in US$)
     ============  ========  ================================================
+
+
+    The following attributes are available after the machine has
+    reached the ``READY`` state:
+
+    ============  ========  ================================================
+    attribute     type      meaning
+    ============  ========  ================================================
+    ready_at      datetime  when the machine notified it's ready to run jobs
+    jobs          list      list of Job IDs of jobs running on this node
+    nodename      str       machine node name (as reported in the batch system listing)
+    ============  ========  ================================================
     """
 
     STARTING = 'STARTING'
     UP = 'UP'
+    READY = 'READY'
     STOPPING = 'STOPPING'
     DOWN = 'DOWN'
     OTHER = 'OTHER'
@@ -174,6 +188,8 @@ class VmInfo(Struct):
                 ]
         if 'bill' not in self:
             self.bill = 0.0
+        if 'jobs' not in self:
+            self.jobs = set()
         
     
     def __hash__(self):
@@ -240,8 +256,11 @@ class Orchestrator(object):
         
         # VMs controlled by this `Orchestrator` instance (indexed by VMID)
         self._started_vms = self._shm.dict()
-
+        self._stopping_vms = self._shm.dict()
+        self._active_vms = { }
+        
         # mapping jobid to job informations
+        self.jobs = [ ]
         self.candidates = { }
 
         # VM book-keeping
@@ -278,8 +297,20 @@ class Orchestrator(object):
                 self._par.apply_async(self._asynch_start_vm, (new_vm,))
 
             # stop VMs that are no longer needed
-            for vm in self._started_vms.values():
+            # XXX: We move the VmInfo object to a separate list so
+            # that it's no longer considered "started" and examined in
+            # this main loop: if the stopping process takes a long
+            # time, we might end up trying to stop the same instance
+            # twice concurrently, which we do not want or need.
+            # FIXME: The trick of modifying `self._started_vms` as we
+            # iterate on it only works because (in Python 2.x), the
+            # `.items()` method returns a *copy* of the items list; in
+            # Python 3.x, where it returns an iterator, this construct
+            # will *not* work!
+            for vmid, vm in self._started_vms.items():
                 if self.can_vm_be_stopped(vm):
+                    self._stopping_vms[vmid] = vm
+                    del self._started_vms[vmid]
                     self._par.apply_async(self._asynch_stop_vm, (vm,))
 
             self.after()
@@ -302,11 +333,11 @@ class Orchestrator(object):
         try:
             self.cloud.start_vm(vm)
             self._started_vms[vm.vmid] = vm
-            log.info("VM %s started, waiting for 'up' notification.", vm.vmid)
+            log.info("VM %s started, waiting for 'READY' notification.", vm.vmid)
         except Exception, ex:
             vm.state = VmInfo.DOWN
             log.error("Error starting VM %s: %s: %s",
-                      vm.vmid, ex.__class__.__name__, str(ex))
+                      vm.vmid, ex.__class__.__name__, str(ex), exc_info=__debug__)
             if vm.vmid in self._started_vms:
                 del _started_vms[vm.vmid]
 
@@ -314,7 +345,7 @@ class Orchestrator(object):
         log.info("Stopping VM %s ...", vm.vmid)
         try:
             self.cloud.stop_vm(vm)
-            del self._started_vms[vm.vmid]
+            del self._stopping_vms[vm.vmid]
             log.info("Stopped VM %s.", vm.vmid)
         except Exception, ex:
             # XXX: This is more delicate than catching errors in the
@@ -323,7 +354,7 @@ class Orchestrator(object):
             # cloud provider for services we do not use any longer.
             # What's the correct course of action?
             log.error("Error stopping VM %s: %s: %s",
-                      vm.vmid, ex.__class__.__name__, str(ex))
+                      vm.vmid, ex.__class__.__name__, str(ex), exc_info=__debug__)
             
 
     def before(self):
@@ -337,15 +368,48 @@ class Orchestrator(object):
 
     def update_job_status(self):
         jobs = self.batchsys.get_sched_info()    
-        for job in (j for j in jobs if j.state == JobInfo.RUNNING):
-            # running jobs are no longer candidates
-            if job.jobid in self.candidates:
-                del self.candidates[job.jobid]
 
-        for job in (j for j in jobs if j.state == JobInfo.PENDING):
-            # update candidates' information
-            if self.is_cloud_candidate(job):
-                self.candidates[job.jobid] = job
+        # remove finished jobs
+        jobids = set(job.jobid for job in jobs)
+        for vm in self._active_vms.itervalues():
+            # remove jobs that are no longer in the list, i.e., they are finished
+            vm.jobs -= (vm.jobs - jobids)
+
+        # update info on running jobs
+        for job in jobs:
+            if job.state == JobInfo.RUNNING:
+                # running jobs are no longer candidates
+                if job.jobid in self.candidates:
+                    del self.candidates[job.jobid]
+                # record which jobs are running on which VM
+                if job.exec_node_name in self._active_vms:
+                    self._active_vms[job.exec_node_name].jobs.add(job.jobid)
+            elif job.state == JobInfo.PENDING:
+                # update candidates' information
+                if self.is_cloud_candidate(job):
+                    self.candidates[job.jobid] = job
+            else:
+                # ignore
+                pass
+
+
+    def vm_is_ready(self, vmid, nodename):
+        """
+        Notify an `Orchestrator` instance that a VM is ready to accept jobs.
+
+        The `nodename` argument must be the host name that the VM
+        reports to the batch system, i.e., the node name as it appears
+        in the batch system scheduler listings/config. The `vmid`
+        argument must be unique ID assigned by the `Orchestrator` to
+        the started VM.
+        """
+        assert vmid in self._started_vms
+        vm = self._started_vms[vmid]
+        assert vm.state in [ VmInfo.STARTING, VmInfo.UP ]
+        vm.state = VmInfo.READY
+        vm.nodename = nodename
+        self._active_vms[nodename] = vm
+        log.info("VM %s reports being ready as node '%s'", vmid, nodename)
 
 
     ##
