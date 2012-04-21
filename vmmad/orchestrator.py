@@ -46,11 +46,26 @@ class JobInfo(Struct):
     A `JobInfo` object is basically a free-form record, but the
     constructor still enforces the following constraints:
 
-    * There must be a `state` attribute, whose value is one of `JobInfo.PENDING`, `JobInfo,RUNNING`, `JobInfo.FINISHED` or `JobInfo.OTHER`.
+    * There must be a `state` attribute, whose value is one of those listed below.
     * There must be a non-empty `jobid` attribute.
 
-    Running jobs have a (string) `exec_node_name` attribute, which is
-    used to match the associated VM (if any) by host name.
+    The `state` attribute is set to one of the following strings
+    (defaults to `DOWN` if not given in the constructor):
+
+    ========= ============================================================
+    state     meaning
+    ========= ============================================================
+    PENDING   The job is waiting in the batch system queue.
+    RUNNING   The job is currently executing on some node.
+    FINISHED  The job is done and any exec node it used is now clear
+              for re-use by another job.
+    OTHER     Unexpected/unhandled state; usually signals an error.
+    ========= ============================================================
+
+    Jobs in ``RUNNING`` state have a (string) `exec_node_name`
+    attribute, which is used to match the associated VM (if any) by
+    host name.
+
     """
 
     # job states
