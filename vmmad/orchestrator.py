@@ -88,6 +88,10 @@ class JobInfo(Struct):
             ("Invalid state '%s' for JobInfo object %s" % (self.state, self))
 
 
+    def __str__(self):
+        return ("Job %s" % self.jobid)
+    
+
     def is_running(self):
         """
         Return `True` if the job is running.
@@ -190,7 +194,15 @@ class VmInfo(Struct):
             self.bill = 0.0
         if 'jobs' not in self:
             self.jobs = set()
-        
+
+
+    def __str__(self):
+        if 'nodename' in self:
+            return ("VM Node '%s'" % self.nodename)
+        else:
+            return ("VM %s" % self.vmid)
+    __repr__ = __str__
+
     
     def __hash__(self):
         """Use the VM id as unique hash value."""
