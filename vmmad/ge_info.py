@@ -22,6 +22,8 @@ cluster status.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import absolute_import
+
 __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
@@ -41,8 +43,8 @@ import UserDict
 import xml.sax
 
 # local imports
-from orchestrator import JobInfo
-from util import Struct
+from vmmad.orchestrator import JobInfo
+from vmmad.util import Struct
 
 # see:
 # http://docs.python.org/library/curses.html
@@ -60,8 +62,8 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
         JOB_ATTRIBUTES = [
                 'JB_job_number',
                 'JB_submission_time',
-		'JAT_start_time',
-		'JAT_prio',
+                'JAT_start_time',
+                'JAT_prio',
                 'JB_name',
                 'state',
                 'queue_name',
@@ -74,9 +76,9 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 lambda: str,
                 # return other values in particular cases:
                 JB_job_number=int,
-		JB_submission_time=str,
-		JAT_prio=float,
-                slots=int,		
+                JB_submission_time=str,
+                JAT_prio=float,
+                slots=int,              
                 )
 
         # rename fields to adhere to what the `JobInfo` ctor expects
@@ -86,8 +88,8 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                         # map field names according to this...
                         return {
                                 'JB_job_number':'jobid',
-				'JB_submission_time':'submit_time',
-				'JAT_start_time':'start_time',
+                                'JB_submission_time':'submit_time',
+                                'JAT_start_time':'start_time',
                                 }[field]
                 except KeyError:
                         # ...and by default, keep field name unchanged
@@ -118,7 +120,7 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
 
         def endElement(self,name):
                 self._level -= 1
-		#self.current.submit_time = "1970-01-01T00:00:00"
+                #self.current.submit_time = "1970-01-01T00:00:00"
                 if 0 == self._level:
                         # end of XML
                         return
@@ -152,10 +154,10 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                                 self.current.state = JobInfo.PENDING
                         elif 'r' in value_str:
                                 self.current.state = JobInfo.RUNNING
-		elif 'JB_job_number' == name:
-			self.current.jobid = value_str
-		elif 'JAT_start_time' == name:
-			self.current.submit_time = value_str
+                elif 'JB_job_number' == name:
+                        self.current.jobid = value_str
+                elif 'JAT_start_time' == name:
+                        self.current.submit_time = value_str
                 elif name in self.JOB_ATTRIBUTES:
                         # convert each XML attribute to a Python representation
                         # (defaulting to `str`, see CONVERT above)
@@ -191,8 +193,8 @@ def get_sched_info(qstat_xml_out=None):
         jobs = [ ]
         xml.sax.make_parser()
         xml.sax.parseString(qstat_xml_out, _QstatXmlHandler(jobs))
-       	return jobs
-	
+        return jobs
+        
 
 
 ## main: run tests

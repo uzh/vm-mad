@@ -36,7 +36,6 @@ import os
 import sys
 import argparse
 import gzip
-import ge_info
 import time
 import csv
 from time import mktime
@@ -44,6 +43,7 @@ from datetime import datetime
 
 # local VM-MAD imports
 from vmmad.orchestrator import JobInfo
+import vmmad.ge_info
 
 
 class Distil():

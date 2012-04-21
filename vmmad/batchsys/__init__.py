@@ -32,7 +32,7 @@ from copy import copy
 
 # local imports
 from vmmad import log
-from orchestrator import JobInfo
+from vmmad.orchestrator import JobInfo
 
 
 class BatchSystem(object):

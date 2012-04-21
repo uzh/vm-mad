@@ -32,8 +32,8 @@ __docformat__ = 'reStructuredText'
 import unittest
 
 # local imports
-import ge_info
-from orchestrator import JobInfo
+import vmmad.ge_info
+from vmmad.orchestrator import JobInfo
 
 
 # qstat -u '*' -xml

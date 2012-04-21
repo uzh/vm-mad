@@ -32,7 +32,7 @@ from copy import copy
 
 # local imports
 from vmmad import log
-from orchestrator import VmInfo
+from vmmad.orchestrator import VmInfo
 
 
 class NodeProvider(object):

@@ -38,8 +38,8 @@ import gzip
 
 # local imports
 from vmmad import log
-from orchestrator import Orchestrator, JobInfo, VmInfo
-import ge_info
+from vmmad.orchestrator import Orchestrator, JobInfo, VmInfo
+import vmmad.ge_info
 
 
 class GEOrchestratorSimulation(Orchestrator):
@@ -103,7 +103,7 @@ class GEOrchestratorSimulation(Orchestrator):
             with open(filename, 'r') as xml_file:
                 xml_data = xml_file.read()
 
-        self.__jobs = ge_info.get_sched_info(xml_data)
+        self.__jobs = vmmad.ge_info.get_sched_info(xml_data)
         return self.__jobs
 
     ##

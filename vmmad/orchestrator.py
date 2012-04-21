@@ -36,7 +36,7 @@ import time
 
 # local imports
 from vmmad import log
-from util import Struct
+from vmmad.util import Struct
 
 
 class JobInfo(Struct):

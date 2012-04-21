@@ -26,7 +26,7 @@ __docformat__ = 'reStructuredText'
 import unittest
 
 # local imports
-from orchestrator import JobInfo
+from vmmad.orchestrator import JobInfo
 
 
 class TestJobInfo(unittest.TestCase):

@@ -43,7 +43,7 @@ from datetime import datetime
 # local imports
 from vmmad import log
 from vmmad.provider.libcloud import DummyCloud
-from orchestrator import Orchestrator, JobInfo, VmInfo
+from vmmad.orchestrator import Orchestrator, JobInfo, VmInfo
 
 
 class OrchestratorSimulation(Orchestrator, DummyCloud):
