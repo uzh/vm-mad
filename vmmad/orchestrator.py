@@ -296,19 +296,31 @@ class Orchestrator(object):
         - stop running VMs if they are no longer needed.
         """
         done = 0
+        last_cycle_at = self.time()
         while max_cycles == 0 or done < max_cycles:
             log.debug("Orchestrator %x about to start cycle %d", id(self), self.cycle)
-            t0 = time.time()
+            now = self.time()
+            t0 = time.time() # need real time, not the simulated one
             
             self.before()
             self.update_job_status()
             # XXX: potentially blocking - should timeout!
             self.cloud.update_vm_status(self._started_vms.values())
+            for vm in self._started_vms.values():
+                if not vm.jobs:
+                    vm.total_idle += (now - last_cycle_at)
+                    vm.last_idle += (now - last_cycle_at)
+                else:
+                    vm.last_idle = 0
 
             # start new VMs if needed
             if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
                 self._vmid += 1
-                new_vm = VmInfo(vmid=str(self._vmid), state=VmInfo.STARTING)
+                new_vm = VmInfo(
+                    vmid=str(self._vmid),
+                    state=VmInfo.STARTING,
+                    total_idle=0,
+                    last_idle=0)
                 self._par.apply_async(self._asynch_start_vm, (new_vm,))
 
             # stop VMs that are no longer needed
@@ -324,16 +336,23 @@ class Orchestrator(object):
             # will *not* work!
             for vmid, vm in self._started_vms.items():
                 if self.can_vm_be_stopped(vm):
+                    if len(vm.jobs) > 0:
+                        log.warning(
+                            "Request to stop VM %s, but it's still running jobs: %s",
+                            vm.vmid, str.join(' ', vm.jobs))
                     self._stopping_vms[vmid] = vm
+                    if vm.state == VmInfo.READY:
+                        del self._active_vms[vm.nodename]
                     del self._started_vms[vmid]
                     self._par.apply_async(self._asynch_stop_vm, (vm,))
 
             self.after()
             self.cycle +=1
             done += 1
-
+            last_cycle_at = now
+            
             if delay > 0:
-                t1 = time.time()
+                t1 = time.time() # need real time, not the simulated one
                 elapsed = t1 - t0
                 if elapsed > delay:
                     log.warning("Cycle %d took more than %.2f seconds!"
@@ -347,7 +366,7 @@ class Orchestrator(object):
         log.info("Starting VM %s ...", vm.vmid)
         try:
             self.cloud.start_vm(vm)
-            vm.started_at = time.time()
+            vm.started_at = self.time()
             self._started_vms[vm.vmid] = vm
             log.info("VM %s started, waiting for 'READY' notification.", vm.vmid)
         except Exception, ex:
@@ -361,9 +380,14 @@ class Orchestrator(object):
         log.info("Stopping VM %s ...", vm.vmid)
         try:
             self.cloud.stop_vm(vm)
-            vm.stopped_at = time.time()
+            vm.stopped_at = self.time()
             del self._stopping_vms[vm.vmid]
-            log.info("Stopped VM %s.", vm.vmid)
+            been_running = (vm.stopped_at - vm.ready_at)
+            log.info("Stopped VM %s (%s);"
+                     " it has run for %d seconds, been idle for %d of them (%.2f%%)",
+                     vm.vmid, vm.nodename, been_running, vm.total_idle,
+                     (100.0 * vm.total_idle / been_running))
+            vm.state = VmInfo.DOWN
         except Exception, ex:
             # XXX: This is more delicate than catching errors in the
             # startup phase: if a VM was not stopped when it should
@@ -410,7 +434,8 @@ class Orchestrator(object):
             # remove jobs that are no longer in the list, i.e., they are finished
             terminated = (vm.jobs - jobids)
             for jobid in terminated:
-                log.info("Job %s terminated its execution on node '%s'", jobid, vm.vmid)
+                log.info("Job %s terminated its execution on node '%s'",
+                         jobid, vm.nodename)
             vm.jobs -= terminated
 
         # update info on running jobs
@@ -449,7 +474,7 @@ class Orchestrator(object):
         vm = self._started_vms[vmid]
         assert vm.state in [ VmInfo.STARTING, VmInfo.UP ]
         vm.state = VmInfo.READY
-        vm.ready_at = time.time()
+        vm.ready_at = self.time()
         vm.nodename = nodename
         self._active_vms[nodename] = vm
         log.info("VM %s reports being ready as node '%s'", vmid, nodename)

@@ -77,7 +77,6 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
         # info about running VMs
         self._vmid = 0 
-        self._idle_vm_count = 0      
 
         # no jobs are running at the onset, all are pending
         self._running = [ ]
@@ -98,28 +97,31 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
         # simulate 'ready' notification from VMs
         for vm in self._started_vms.values():
-            if vm.last_idle >= 0 and vm.state != VmInfo.READY:
+            if vm.state != VmInfo.READY:
                 if vm.ever_running:
                     nodename = ("clusternode-%s" % vm.vmid)
+                    self.vm_is_ready(vm.vmid, nodename)
                 else:
-                    nodename = ("vm-%s" % (int(vm.vmid) - self.cluster_size))
-                self.vm_is_ready(vm.vmid, nodename)
+                    # we use `vm.last_idle` as a countdown to the `READY` state for VMs:
+                    # it is initialized to `-startup_delay` and incremented at every pass
+                    if vm.last_idle >= 0:
+                        nodename = ("vm-%s" % (int(vm.vmid) - self.cluster_size))
+                        self.vm_is_ready(vm.vmid, nodename)
+                    else:
+                        vm.last_idle += 1
 
         # simulate SGE scheduler starting a new job
         for vm in self._active_vms.values():
-            if vm.last_idle > 0:
+            if not vm.jobs:
                 if not self._pending:
                     break
                 job = self._pending.pop()
                 job.exec_node_name = vm.nodename
                 job.running_at = self.time()
-                job.vm = vm
-                vm.last_idle = 0
-                if not vm.ever_running: 
-                    if self._idle_vm_count > 0:
-                        self._idle_vm_count -= 1
                 self._running.append(job)
-                log.info("Job %s just started running on VM %s.", job.jobid, vm.vmid)
+                vm.jobs.add(job.jobid)
+                log.info("Job %s just started running on VM %s (%s).",
+                         job.jobid, vm.vmid, vm.nodename)
 
 
     def before(self):
@@ -129,13 +131,14 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             self.output_file.close()
             sys.exit(0)        
     
+        _idle_vm_count = len([ vm for vm in self._active_vms.values()
+                               if vm.last_idle > 0 and not vm.ever_running ])
         self.writer.writerow(
             #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
-            [self.starting_time + (self.time_interval*self.cycle), 
-                                  len(self._pending), len(self._running),      len(self._started_vms), self._idle_vm_count])
+            [self.time(),         len(self._pending), len(self._running),      len(self._started_vms), _idle_vm_count])
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
-                     self.time(), len(self._pending), len(self._running), len(self._started_vms), self._idle_vm_count)
+                 self.time(), len(self._pending), len(self._running), len(self._started_vms), _idle_vm_count)
 
 
     def time(self):
@@ -169,39 +172,22 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
     def start_vm(self, vm):
         DummyCloud.start_vm(self, vm)
-        vm.been_running=0
-        vm.total_idle=0
 
         # Setting the first "cluster_size" machines to be ever_running. 
-        if vm.vmid <= self.cluster_size:
+        if int(vm.vmid) <= self.cluster_size:
             vm.ever_running = True 
-            vm.last_idle = 1 
         else:
             vm.ever_running = False 
-            vm.last_idle=(-self.startup_delay)
-        log.info("Started VM %s (%s).", vm.vmid, vm.instance.uuid)
+            vm.last_idle = -self.startup_delay
 
     def update_vm_status(self, vms):
         DummyCloud.update_vm_status(self, vms)
-        for vm in self._started_vms.values():
-            vm.been_running += self.time_interval
-            if not vm.jobs:
-                vm.total_idle += self.time_interval
-                vm.last_idle += self.time_interval
 
     def stop_vm(self, vm):
         assert not vm.ever_running, (
             "Request to stop VM %s which is marked as 'ever running'"
             % vm.vmid)
-        log.info("Stopping VM %s (%s):"
-                 " has run for %d steps, been idle for %d of them (%.2f%%)",
-                 vm.vmid, vm.instance.uuid, vm.been_running, vm.total_idle,
-                 (100.0 * vm.total_idle / vm.been_running))
-        if len(vm.jobs) > 0:
-            log.warning("VM %s still running jobs: %s", vm.vmid, str.join(' ', vm.jobs))
         DummyCloud.stop_vm(self, vm)
-        if vm.last_idle > 0 and self._idle_vm_count > 0:
-            self._idle_vm_count -= 1
         return True
 
 
@@ -211,7 +197,7 @@ if "__main__" == __name__:
     parser.add_argument('--max-vms', '-mv', metavar='N', dest="max_vms", default=10, type=int, help="Maximum number of VMs to be started, default is %(default)s")
     parser.add_argument('--max-delta', '-md', metavar='N', dest="max_delta", default=1, type=int, help="Cap the number of VMs that can be started or stopped in a single orchestration cycle. Default is %(default)d.")    
     parser.add_argument('--max-idle', '-mi', metavar='NUM_SECS', dest="max_idle", default=7200, type=int, help="Maximum idle time (in seconds) before swithing off a VM, default is %(default)s")
-    parser.add_argument('--startup-delay', '-s', metavar='NUM_SECS', dest="startup_delay", default=3600, type=int, help="Time (in seconds) delay before staring up a VM, default is %(default)s")
+    parser.add_argument('--startup-delay', '-s', metavar='NUM_SECS', dest="startup_delay", default=60, type=int, help="Time (in seconds) delay before a started VM is READY. Default is %(default)s")
     parser.add_argument('--csv-file', '-csvf',  metavar='String', dest="csv_file", default="accounting.csv", help="File containing the CSV information, %(default)s")
     parser.add_argument('--output-file', '-o',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s") 
     parser.add_argument('--cluster-size', '-cs',  metavar='NUM_CPUS', dest="cluster_size", default="20", type=int, help="Number of VMs, used for the simulation of real available cluster: %(default)s")
