@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Functions to get information about a Sun/Oracle/Open Grid Engine
-cluster status.
+Interfaces to the Sun/Oracle/Open Grid Engine batch queueing systems.
 """
 # Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
 #
@@ -28,11 +27,6 @@ __docformat__ = 'reStructuredText'
 __version__ = '$Revision$'
 
 
-import logging
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(name)s: [%(asctime)s] %(levelname)-8s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-
 # stdlib imports
 from collections import Mapping, defaultdict
 import os
@@ -43,13 +37,10 @@ import UserDict
 import xml.sax
 
 # local imports
+from vmmad import log
+from vmmad.batchsys import BatchSystem
 from vmmad.orchestrator import JobInfo
 from vmmad.util import Struct
-
-# see:
-# http://docs.python.org/library/curses.html
-# http://svn.python.org/projects/python/trunk/Demo/curses/
-# http://fgcz-data.uzh.ch/cgi-bin/fgcz_ge_info.py
 
 
 class _QstatXmlHandler(xml.sax.ContentHandler):
@@ -165,41 +156,55 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
 
                 return
 
-def _run_qstat(user='*'):
+
+class GridEngine(BatchSystem):
+    """
+    Abstract base class describing the interface that a node provider
+    should implement.
+    """
+
+    def __init__(self, user='*'):
+        """
+        Set up parameters for querying SGE.
+        """
+        self.user = user
+
+
+    def run_qstat(self):
         try:
-                qstat_cmd = ['qstat', '-u', '*', '-xml']
-                qstat_process = subprocess.Popen(
-                        qstat_cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        shell=False)
-                stdout, stderr = qstat_process.communicate()
-                return stdout
+            qstat_cmd = ['qstat', '-u', self.user, '-xml']
+            qstat_process = subprocess.Popen(
+                qstat_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False)
+            stdout, stderr = qstat_process.communicate()
+            return stdout
         except subprocess.CalledProcessError, ex:
-                logging.error("Error running '%s': '%s'; exit code %d",
-                              str.join(' ', qstat_cmd), stderr, ex.returncode)
-                raise
+            logging.error("Error running '%s': '%s'; exit code %d",
+                          str.join(' ', qstat_cmd), stderr, ex.returncode)
+            raise
 
 
-def get_sched_info(qstat_xml_out=None):
+    @staticmethod
+    def parse_qstat_xml_output(qstat_xml_out):
         """
         Parse the output of a `qstat -xml` command and return a
         tuple `(jobid,submit_time,duration)`, where each item is a list of
         dictionary-like objects whose keys/attributes directly map the
         XML contents.
         """
-        if qstat_xml_out is None:
-                qstat_xml_out = _run_qstat()
         jobs = [ ]
         xml.sax.make_parser()
         xml.sax.parseString(qstat_xml_out, _QstatXmlHandler(jobs))
         return jobs
-        
 
 
-## main: run tests
-
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod(name="ge_info",
-                    optionflags=doctest.NORMALIZE_WHITESPACE)
+    def get_sched_info(self):
+        """
+        Query SGE through ``qstat -xml`` and return a list of
+        `JobInfo` objects representing the jobs in the batch queue
+        system.
+        """
+        qstat_xml_out = self.run_qstat()
+        return self.parse_qstat_xml_output(qstat_xml_out)

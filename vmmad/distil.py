@@ -43,7 +43,7 @@ from datetime import datetime
 
 # local VM-MAD imports
 from vmmad.orchestrator import JobInfo
-import vmmad.ge_info
+from vmmad.batchsys.gridengine import GridEngine
 
 
 class Distil():
@@ -68,6 +68,7 @@ class Distil():
         self.__starting = 0
 
     def parse_xml_files(self):
+        ge = GridEngine()
         for filename in self.qstat_xml_files:   
             if filename.endswith('.gz'):
                 with gzip.open(filename, 'r') as xml_file:    
@@ -75,7 +76,7 @@ class Distil():
             else:
                 with open(filename, 'r') as xml_file:
                     xml_data = xml_file.read()
-            self.__jobs = ge_info.get_sched_info(xml_data)
+            self.__jobs = ge.parse_qstat_xml_output(xml_data)
             for job in self.__jobs:
                 if job.state == JobInfo.PENDING:
                     # Convert the submit time to UNIX time

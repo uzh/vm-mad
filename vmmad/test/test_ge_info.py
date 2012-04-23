@@ -32,7 +32,7 @@ __docformat__ = 'reStructuredText'
 import unittest
 
 # local imports
-import vmmad.ge_info
+from vmmad.batchsys.gridengine import GridEngine
 from vmmad.orchestrator import JobInfo
 
 
@@ -79,20 +79,23 @@ EXAMPLE_QSTAT_XML_OUTPUT = """<?xml version='1.0'?>
 
 class TestGEInfo(unittest.TestCase):
 
+    def setUp(self):
+        self.ge = GridEngine()
+
     def test_jobs_number(self):
-        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = self.ge.parse_qstat_xml_output(EXAMPLE_QSTAT_XML_OUTPUT)
         running = [job for job in jobs if job.state == JobInfo.RUNNING]
         pending = [job for job in jobs if job.state == JobInfo.PENDING]
         self.assertEqual(len(running), 2)
         self.assertEqual(len(pending), 1)
  
     def test_job_object_class(self):
-        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = self.ge.parse_qstat_xml_output(EXAMPLE_QSTAT_XML_OUTPUT)
         for job in jobs:
             self.assertIsInstance(job, JobInfo)
  
     def test_running_job_attribute_types(self):
-        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = self.ge.parse_qstat_xml_output(EXAMPLE_QSTAT_XML_OUTPUT)
         running = [job for job in jobs if job.state == JobInfo.RUNNING]
         self.assertTrue(len(running) > 0)
         for job in running:
@@ -104,7 +107,7 @@ class TestGEInfo(unittest.TestCase):
             #self.assertTrue(isinstance(job.state, str))
 
     def test_running_job_attribute_values(self):
-        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = self.ge.parse_qstat_xml_output(EXAMPLE_QSTAT_XML_OUTPUT)
         running = [job for job in jobs if job.state == JobInfo.RUNNING]
         self.assertTrue(len(running) > 0)
         job = running[0]
@@ -115,7 +118,7 @@ class TestGEInfo(unittest.TestCase):
         self.assertEqual(job.exec_node_name, 'fgcz-cloud-002')
 
     def test_pending_job_attribute_types(self):
-        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = self.ge.parse_qstat_xml_output(EXAMPLE_QSTAT_XML_OUTPUT)
         pending = [job for job in jobs if job.state == JobInfo.PENDING]
         self.assertTrue(len(pending) > 0)
         for job in pending:
@@ -126,7 +129,7 @@ class TestGEInfo(unittest.TestCase):
             self.assertTrue(job.exec_node_name is None)
 
     def test_pending_job_attribute_values(self):
-        jobs = vmmad.ge_info.get_sched_info(EXAMPLE_QSTAT_XML_OUTPUT)
+        jobs = self.ge.parse_qstat_xml_output(EXAMPLE_QSTAT_XML_OUTPUT)
         pending = [job for job in jobs if job.state == JobInfo.PENDING]
         self.assertTrue(len(pending) > 0)
         job = pending[0]
