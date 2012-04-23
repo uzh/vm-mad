@@ -108,7 +108,7 @@ class RandomJobs(object):
         with the `duration` constructor parameter.
         """
         # generate new jobs
-        for _ in xrange(N):
+        for _ in xrange(self.N):
             dice = random.random()
             if dice <= self.p:
                 continue
