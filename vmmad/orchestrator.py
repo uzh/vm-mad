@@ -304,7 +304,7 @@ class Orchestrator(object):
             t0 = time.time() # need real time, not the simulated one
             
             self.before()
-            self.update_job_status()
+            self.jobs = self.update_job_status()
             # XXX: potentially blocking - should timeout!
             self.cloud.update_vm_status(self._started_vms.values())
             for vm in self._started_vms.values():
