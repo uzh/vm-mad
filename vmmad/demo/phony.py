@@ -37,8 +37,7 @@ import time
 # local imports
 from vmmad import log
 from vmmad.orchestrator import JobInfo
-from vmmad.provider.libcloud import DummyCloud
-from vmmad.util import Singleton
+from vmmad.provider.libcloud import DummyCloud, EC2Cloud
 from vmmad.webapp import OrchestratorWebApp
 
 
