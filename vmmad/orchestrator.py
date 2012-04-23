@@ -36,7 +36,7 @@ import time
 
 # local imports
 from vmmad import log
-from vmmad.util import Struct
+from vmmad.util import random_password, Struct
 
 
 class JobInfo(Struct):
@@ -315,12 +315,21 @@ class Orchestrator(object):
 
             # start new VMs if needed
             if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
+                # new VMID
                 self._vmid += 1
+                # generate a random auth token and ensure it's not in use
+                passwd = random_password()
+                while passwd in self._waiting_for_auth:
+                    passwd = random_password()
+                # bundle up all this into a VM object
                 new_vm = VmInfo(
                     vmid=str(self._vmid),
                     state=VmInfo.STARTING,
+                    auth=passwd,
                     total_idle=0,
                     last_idle=0)
+                # start it!
+                self._waiting_for_auth[passwd] = vm
                 self._par.apply_async(self._asynch_start_vm, (new_vm,))
 
             # stop VMs that are no longer needed
@@ -460,24 +469,33 @@ class Orchestrator(object):
         return jobs
     
 
-    def vm_is_ready(self, vmid, nodename):
+    def vm_is_ready(self, auth, nodename):
         """
         Notify an `Orchestrator` instance that a VM is ready to accept jobs.
 
+        The `auth` argument must match one of the passwords assigned
+        to a previously-started VM (which are passed to the VM via
+        boot parameters).  If it does not, an error is logged and the
+        call immediately returns `False`.
+
         The `nodename` argument must be the host name that the VM
         reports to the batch system, i.e., the node name as it appears
-        in the batch system scheduler listings/config. The `vmid`
-        argument must be unique ID assigned by the `Orchestrator` to
-        the started VM.
+        in the batch system scheduler listings/config. 
         """
-        assert vmid in self._started_vms
-        vm = self._started_vms[vmid]
+        if auth not in self._waiting_for_auth:
+            log.error(
+                "Received notification that node '%s' is READY,"
+                " but authentication data does not match any started VM.  Ignoring.",
+                nodename)
+            return False
+        vm = self._waiting_for_auth[auth]
         assert vm.state in [ VmInfo.STARTING, VmInfo.UP ]
         vm.state = VmInfo.READY
         vm.ready_at = self.time()
         vm.nodename = nodename
         self._active_vms[nodename] = vm
-        log.info("VM %s reports being ready as node '%s'", vmid, nodename)
+        log.info("VM %s reports being ready as node '%s'", vm.vmid, nodename)
+        return True
 
 
     ##

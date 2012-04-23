@@ -100,13 +100,13 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             if vm.state != VmInfo.READY:
                 if vm.ever_running:
                     nodename = ("clusternode-%s" % vm.vmid)
-                    self.vm_is_ready(vm.vmid, nodename)
+                    self.vm_is_ready(vm.auth, nodename)
                 else:
                     # we use `vm.last_idle` as a countdown to the `READY` state for VMs:
                     # it is initialized to `-startup_delay` and incremented at every pass
                     if vm.last_idle >= 0:
                         nodename = ("vm-%s" % (int(vm.vmid) - self.cluster_size))
-                        self.vm_is_ready(vm.vmid, nodename)
+                        self.vm_is_ready(vm.auth, nodename)
                     else:
                         vm.last_idle += 1
 

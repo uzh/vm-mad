@@ -45,21 +45,23 @@ from vmmad.provider import NodeProvider
 
 
 class VmmadAppPot(gc3libs.Application):
-        def __init__(self, vmid):
-            vm_output_dir=("smscg.vm.%s" % vmid)
+        def __init__(self, vm):
+            vm_output_dir=("smscg.vm.%s" % vm.vmid)
             gc3libs.Application.AppPotApplication.__init__(
-                self,
-                executable = "sleep",
-                arguments = ["365d"],
-                inputs = [], 
-                outputs = [],   
-                output_dir = vm_output_dir,
-                apppot_img = "$APPPOT_IMAGE",
-                stdout = "apppot.out",
-                jobname = "VMMAD",
-                tags = ["TEST/APPPOT_VM-MAD-1.0"],
-                requested_architecture = gc3libs.Run.Arch.X86_64,
-                memory = 2,)
+                    self,
+                    apppot_img = "$APPPOT_IMAGE",
+                    apppot_extra = ("VMMAD_AUTH='%s'" % vm.auth),
+                    executable = "sleep",
+                    arguments = ["365d"],
+                    inputs = [], 
+                    outputs = [],   
+                    output_dir = vm_output_dir,
+                    stdout = "apppot.out",
+                    jobname = "VMMAD",
+                    tags = ["TEST/APPPOT_VM-MAD-1.0"],
+                    requested_architecture = gc3libs.Run.Arch.X86_64,
+                    memory = 2,
+                    )
 
 
 class SmscgProvider(NodeProvider):
@@ -81,7 +83,7 @@ class SmscgProvider(NodeProvider):
         Start a VM as a job to the SMSCG infrastructure
         """
         # Start the job to the SMSCG infrastructure 
-        vm.gc3pie_app = VmmadAppPot(vm.vmid)
+        vm.gc3pie_app = VmmadAppPot(vm)
         self.g.submit(vm.gc3pie_app)
 
     

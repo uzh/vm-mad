@@ -76,11 +76,11 @@ class OrchestratorWebApp(Orchestrator):
         if 'REMOTE_ADDR' in request.META:
             addr = request.META['REMOTE_ADDR']
         # look for POST/GET parameters
-        if 'vmid' in request.REQUEST:
-            vmid = request.REQUEST['vmid']
+        if 'auth' in request.REQUEST:
+            auth = request.REQUEST['auth']
         else:
             # missing required parameter
-            return HttpResponse("ERROR: Missing required parameter 'vmid'",
+            return HttpResponse("ERROR: Missing required parameter 'auth'",
                                 status=400, content_type='text/plain')
         if 'hostname' in request.REQUEST:
             nodename = request.REQUEST['hostname']
@@ -94,7 +94,7 @@ class OrchestratorWebApp(Orchestrator):
                  % ((hostname if hostname is not None else "<UNKNOWN>"),
                     (addr if addr is not None else "unknown address"),
                     nodename))
-        self.vm_is_ready(vmid, nodename)
+        self.vm_is_ready(auth, nodename)
         return HttpResponse("OK", content_type='text/plain')
 
 
@@ -146,8 +146,8 @@ class OrchestratorWebApp(Orchestrator):
               state=vm.state,
               nodename=(vm.nodename if 'nodename' in vm else "(unknown)"),
               ready_url=(('''
-                  <a href="/x/ready?vmid=%s&hostname=vm-%s">Manually mark as ready</a>
-                          ''' % (vm.vmid, vm.vmid))
+                  <a href="/x/ready?auth=%s&hostname=vm-%s">Manually mark as ready</a>
+                          ''' % (vm.auth, vm.vmid))
                          if vm.state != VmInfo.READY else ""),
             )
         html += """</table>"""
