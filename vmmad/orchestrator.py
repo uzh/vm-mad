@@ -269,6 +269,7 @@ class Orchestrator(object):
         self._started_vms = self._shm.dict()
         self._stopping_vms = self._shm.dict()
         self._active_vms = { }
+        self._waiting_for_auth = { }
         
         # mapping jobid to job informations
         self.jobs = [ ]
@@ -488,7 +489,7 @@ class Orchestrator(object):
                 " but authentication data does not match any started VM.  Ignoring.",
                 nodename)
             return False
-        vm = self._waiting_for_auth[auth]
+        vm = self._waiting_for_auth.pop(auth)
         assert vm.state in [ VmInfo.STARTING, VmInfo.UP ]
         vm.state = VmInfo.READY
         vm.ready_at = self.time()
