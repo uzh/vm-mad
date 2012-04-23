@@ -36,6 +36,7 @@ import time
 
 # local imports
 from vmmad import log
+from vmmad.batchsys.randomjobs import RandomJobs
 from vmmad.orchestrator import JobInfo
 from vmmad.provider.libcloud import DummyCloud, EC2Cloud
 from vmmad.webapp import OrchestratorWebApp
@@ -45,13 +46,6 @@ from vmmad.webapp import OrchestratorWebApp
 class DemoOrchestrator(OrchestratorWebApp):
     
     def __init__(self, job_number=10, min_duration=1, max_duration=8*60*60):
-        # Randomly generated pending jobs
-        self.__jobs = [
-            JobInfo(jobid=random.randint(1, job_number*100),
-                    state=JobInfo.PENDING,
-                    duration=random.randint(min_duration, max_duration))
-            for _ in xrange(0,job_number) ]
-
         OrchestratorWebApp.__init__(
             self,
             delay=5,
