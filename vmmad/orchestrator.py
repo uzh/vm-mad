@@ -330,7 +330,7 @@ class Orchestrator(object):
                     total_idle=0,
                     last_idle=0)
                 # start it!
-                self._waiting_for_auth[passwd] = vm
+                self._waiting_for_auth[passwd] = new_vm
                 self._par.apply_async(self._asynch_start_vm, (new_vm,))
 
             # stop VMs that are no longer needed
