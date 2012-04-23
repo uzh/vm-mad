@@ -29,6 +29,13 @@ __version__ = '$Revision$'
 
 # stdlib imports
 from collections import Mapping
+import random
+import string
+
+
+
+def random_password(length=24, letters=(string.ascii_letters + string.digits)):
+  return str.join('', [random.choice(letters) for _ in xrange(length)])
 
 
 class Struct(Mapping):
