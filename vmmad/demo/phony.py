@@ -50,7 +50,7 @@ class DemoOrchestrator(OrchestratorWebApp):
             self,
             delay=5,
             cloud=DummyCloud('1', '1'),
-            batchsys=RandomJobs(3, 0.25),
+            batchsys=RandomJobs(3, 0.25, timer=self.time),
             max_vms=10)
         
 
@@ -62,8 +62,8 @@ class DemoOrchestrator(OrchestratorWebApp):
         return True
 
     def is_new_vm_needed(self):
-        pending = len([ job for job in self.__jobs if job.state == JobInfo.PENDING ])
-        running = len([ job for job in self.__jobs if job.state == JobInfo.RUNNING ])
+        pending = len([ job for job in self.jobs if job.state == JobInfo.PENDING ])
+        running = len([ job for job in self.jobs if job.state == JobInfo.RUNNING ])
         if pending > 2*running:
             return True
         return False

@@ -29,6 +29,7 @@ __version__ = '$Revision$'
 # stdlib imports
 from copy import copy
 import random
+import time
 
 # local imports
 from vmmad import log
@@ -76,7 +77,7 @@ class RandomJobs(object):
     random duration at a specified rate.
     """
 
-    def __init__(self, N, p, duration=(24*60*60)):
+    def __init__(self, N, p, duration=(24*60*60), timer=time.time):
         """
         Construct a `RandomJobs` object.
 
@@ -91,7 +92,7 @@ class RandomJobs(object):
             self.duration = UniformlyInRange(1, duration)
         self.jobs = [ ]
         self.next_jobid = 0
-        
+        self.timer = timer
 
     def get_sched_info(self):
         """
@@ -117,6 +118,7 @@ class RandomJobs(object):
                 JobInfo(
                     jobid=str(self.next_jobid),
                     state=JobInfo.PENDING,
-                    duration=self.duration.next()
+                    duration=self.duration.next(),
+                    submitted_at=self.timer(),
                 ))
         return self.jobs
