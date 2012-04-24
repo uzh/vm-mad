@@ -387,17 +387,25 @@ class Orchestrator(object):
                 del _started_vms[vm.vmid]
 
     def _asynch_stop_vm(self, vm):
-        log.info("Stopping VM %s ...", vm.vmid)
+        if vm.state == READY:
+            vm_was_ready = True
+        else:
+            vm_was_ready = False
+            
+        log.info("Stopping VM %s...", vm.vmid)
         try:
             self.cloud.stop_vm(vm)
             vm.stopped_at = self.time()
             del self._stopping_vms[vm.vmid]
-            been_running = (vm.stopped_at - vm.ready_at)
-            log.info("Stopped VM %s (%s);"
-                     " it has run for %d seconds, been idle for %d of them (%.2f%%)",
-                     vm.vmid, vm.nodename, been_running, vm.total_idle,
-                     (100.0 * vm.total_idle / been_running))
             vm.state = VmInfo.DOWN
+            if vm_was_ready:
+                been_running = (vm.stopped_at - vm.ready_at)
+                log.info("Stopped VM %s (%s);"
+                         " it has run for %d seconds, been idle for %d of them (%.2f%%)",
+                         vm.vmid, vm.nodename, been_running, vm.total_idle,
+                         (100.0 * vm.total_idle / been_running))
+            else:
+                log.warning("Stopped VM %s (%s); it never reached READY status.")
         except Exception, ex:
             # XXX: This is more delicate than catching errors in the
             # startup phase: if a VM was not stopped when it should
