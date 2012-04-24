@@ -79,6 +79,7 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                         # map field names according to this...
                         return {
                                 'JB_job_number':'jobid',
+                                'JB_name':'name',
                                 'JB_submission_time':'submit_time',
                                 'JAT_start_time':'start_time',
                                 }[field]

@@ -101,7 +101,7 @@ class TestGEInfo(unittest.TestCase):
         for job in running:
             self.assertTrue(isinstance(job.JAT_prio, float))
             self.assertTrue(isinstance(job.jobid, str))
-            self.assertTrue(isinstance(job.JB_name, str))
+            self.assertTrue(isinstance(job.name, str))
             self.assertTrue(isinstance(job.queue_name, str))
             self.assertTrue(isinstance(job.exec_node_name, str))
             #self.assertTrue(isinstance(job.state, str))
@@ -113,7 +113,7 @@ class TestGEInfo(unittest.TestCase):
         job = running[0]
         self.assertEqual(job.state, JobInfo.RUNNING)
         self.assertEqual(job.jobid, '389524')
-        self.assertEqual(job.JB_name, 'QRLOGIN')
+        self.assertEqual(job.name, 'QRLOGIN')
         self.assertEqual(job.queue_name, 'cloud@fgcz-cloud-002')
         self.assertEqual(job.exec_node_name, 'fgcz-cloud-002')
 
@@ -124,7 +124,7 @@ class TestGEInfo(unittest.TestCase):
         for job in pending:
             self.assertTrue(isinstance(job.JAT_prio, float))
             self.assertTrue(isinstance(job.jobid, str))
-            self.assertTrue(isinstance(job.JB_name, str))
+            self.assertTrue(isinstance(job.name, str))
             self.assertTrue(job.queue_name is None)
             self.assertTrue(job.exec_node_name is None)
 
@@ -136,7 +136,7 @@ class TestGEInfo(unittest.TestCase):
         self.assertEqual(job.state, JobInfo.PENDING)
         self.assertEqual(job.JAT_prio, 0.505)
         self.assertEqual(job.jobid, '389632')
-        self.assertEqual(job.JB_name, 'STDIN')
+        self.assertEqual(job.name, 'STDIN')
         self.assertEqual(job.queue_name, None)
         self.assertEqual(job.exec_node_name, None)
 
