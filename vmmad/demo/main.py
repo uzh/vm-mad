@@ -33,12 +33,14 @@ import sys
 
 # local imports
 from vmmad import log
-from vmmad.demo.phony import DemoOrchestrator
+#from vmmad.demo.phony import DemoOrchestrator
+from vmmad.demo.fgcz import DemoOrchestrator
 
 
 # the main program
-log.warning("Importing demo.main as module '%s', creating DemoOrchestrator instance.",
-            __name__)
+log.warning(
+    "Importing demo.main as module '%s', creating DemoOrchestrator instance.",
+    __name__)
 
 
 # The actual Orchestrator instance.  There should be one and only one
