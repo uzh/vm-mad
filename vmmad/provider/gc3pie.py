@@ -31,12 +31,10 @@ __version__ = '$Revision$'
 from abc import abstractmethod
 from copy import copy
 
-# libcloud imports
-import libcloud.compute.types
-import libcloud.compute.providers
-import gc3libs.persistence
+# gc3pie imports
 import gc3libs 
 import gc3libs.core
+from gc3libs.application.apppot import AppPotApplication
 
 # local imports
 from vmmad import log
@@ -44,13 +42,12 @@ from vmmad.orchestrator import VmInfo
 from vmmad.provider import NodeProvider
 
 
-class VmmadAppPot(gc3libs.Application):
+class VmmadAppPot(AppPotApplication):
         def __init__(self, vm):
             vm_output_dir=("smscg.vm.%s" % vm.vmid)
-            gc3libs.Application.AppPotApplication.__init__(
+            AppPotApplication.__init__(
                     self,
-                    apppot_img = "$APPPOT_IMAGE",
-                    apppot_extra = ("VMMAD_AUTH='%s'" % vm.auth),
+                    apppot_extra = [ ("VMMAD_AUTH='%s'" % vm.auth) ],
                     executable = "sleep",
                     arguments = ["365d"],
                     inputs = [], 
@@ -109,7 +106,7 @@ class SmscgProvider(NodeProvider):
         """
         Kill the VM by kill the job
         """
-        g.kill(vm.gc3pie_app) 
-        g.fetch_output(vm.gc3pie_app)
-        g.free(vm.gc3pie_app)
+        self.g.kill(vm.gc3pie_app) 
+        self.g.fetch_output(vm.gc3pie_app)
+        self.g.free(vm.gc3pie_app)
         vm.state = VmInfo.DOWN
