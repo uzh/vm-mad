@@ -88,9 +88,14 @@ class JobInfo(Struct):
             ("Invalid state '%s' for JobInfo object %s" % (self.state, self))
 
 
+    def __hash__(self):
+        """Use the Job id as unique hash value."""
+        return hash(self.jobid)
+
+
     def __str__(self):
         return ("Job %s" % self.jobid)
-    
+
 
     def is_running(self):
         """
