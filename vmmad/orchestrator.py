@@ -36,7 +36,7 @@ import time
 
 # local imports
 from vmmad import log
-from vmmad.util import IndirectDict, random_password, Struct
+from vmmad.util import random_password, Struct
 
 
 class JobInfo(Struct):
