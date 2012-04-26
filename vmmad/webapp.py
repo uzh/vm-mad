@@ -120,8 +120,8 @@ class OrchestratorWebApp(Orchestrator):
             """ % dict(
                 app=self.__class__.__name__,
                 cycles=self.cycle,
-                num_started=len(self._started_vms),
-                num_active=len(self._active_vms),
+                num_started=len(self.vms),
+                num_active=len(self._vms_by_nodename),
             )
         # make a table of the started VMs
         html += """
@@ -133,7 +133,7 @@ class OrchestratorWebApp(Orchestrator):
                   <th>Node name</th>
                 </tr>
               """
-        for vm in self._started_vms.values():
+        for vm in self.vms.values():
             html += """
             <tr>
               <td>%(vmid)s</td>

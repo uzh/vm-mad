@@ -52,10 +52,10 @@ class CloudNodeProvider(NodeProvider):
         LibCloud's `NodeState`.
         """
         return {
-            libcloud.compute.types.NodeState.RUNNING:    VmInfo.UP,
-            libcloud.compute.types.NodeState.REBOOTING:  VmInfo.STARTING,
-            libcloud.compute.types.NodeState.TERMINATED: VmInfo.DOWN,
             libcloud.compute.types.NodeState.PENDING:    VmInfo.STARTING,
+            libcloud.compute.types.NodeState.REBOOTING:  VmInfo.STARTING,
+            libcloud.compute.types.NodeState.RUNNING:    None,
+            libcloud.compute.types.NodeState.TERMINATED: VmInfo.DOWN,
             libcloud.compute.types.NodeState.UNKNOWN:    VmInfo.OTHER,
             }[status]
 
@@ -115,7 +115,6 @@ class DummyCloud(CloudNodeProvider):
         assert uuid in self._instance_to_vm_map, (
             "BUG: Instance UUID %s has not been inserted in `self._instance_to_vm_map`"
             % uuid)
-        vm.state = VmInfo.UP
 
 
     def stop_vm(self, vm):
@@ -134,7 +133,9 @@ class DummyCloud(CloudNodeProvider):
         for node in nodes:
             vm = self._instance_to_vm_map[node.uuid]
             vm.instance = node
-            vm.state = self._vminfo_state_from_libcloud_status(node.state)
+            state = self._vminfo_state_from_libcloud_status(node.state)
+            if state is not None:
+                vm.state = state
 
 
 
@@ -212,4 +213,6 @@ class EC2Cloud(CloudNodeProvider):
         for node in nodes:
             vm = self._instance_to_vm_map[node.uuid]
             vm.instance = node
-            vm.state = self._vminfo_state_from_libcloud_status(node.state)
+            state = self._vminfo_state_from_libcloud_status(node.state)
+            if state is not None:
+                vm.state = state

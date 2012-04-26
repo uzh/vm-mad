@@ -96,22 +96,23 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         self._running = [ job for job in self.batchsys.jobs if job.state == JobInfo.RUNNING ]
 
         # simulate 'ready' notification from VMs
-        for vm in self._started_vms.values():
-            if vm.state != VmInfo.READY:
-                if vm.ever_running:
-                    nodename = ("clusternode-%s" % vm.vmid)
+        starting_vms = [ vm for vm in self.vms.values() if vm.state == VmInfo.STARTING ]
+        for vm in starting_vms:
+            if vm.ever_running:
+                nodename = ("clusternode-%s" % vm.vmid)
+                self.vm_is_ready(vm.auth, nodename)
+            else:
+                # we use `vm.last_idle` as a countdown to the `READY` state for VMs:
+                # it is initialized to `-startup_delay` and incremented at every pass
+                if vm.last_idle >= 0:
+                    nodename = ("vm-%s" % (int(vm.vmid) - self.cluster_size))
                     self.vm_is_ready(vm.auth, nodename)
                 else:
-                    # we use `vm.last_idle` as a countdown to the `READY` state for VMs:
-                    # it is initialized to `-startup_delay` and incremented at every pass
-                    if vm.last_idle >= 0:
-                        nodename = ("vm-%s" % (int(vm.vmid) - self.cluster_size))
-                        self.vm_is_ready(vm.auth, nodename)
-                    else:
-                        vm.last_idle += 1
+                    vm.last_idle += 1
 
         # simulate SGE scheduler starting a new job
-        for vm in self._active_vms.values():
+        ready_vms = [ vm for vm in self.vms.values() if vm.state == VmInfo.READY ]
+        for vm in ready_vms:
             if not vm.jobs:
                 if not self._pending:
                     break
@@ -131,14 +132,14 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             self.output_file.close()
             sys.exit(0)        
     
-        _idle_vm_count = len([ vm for vm in self._active_vms.values()
+        _idle_vm_count = len([ vm for vm in self.vms.values()
                                if vm.last_idle > 0 and not vm.ever_running ])
         self.writer.writerow(
             #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
-            [self.time(),         len(self._pending), len(self._running),      len(self._started_vms), _idle_vm_count])
+            [self.time(),         len(self._pending), len(self._running),      len(self.vms), _idle_vm_count])
 
         log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
-                 self.time(), len(self._pending), len(self._running), len(self._started_vms), _idle_vm_count)
+                 self.time(), len(self._pending), len(self._running), len(self.vms), _idle_vm_count)
 
 
     def time(self):

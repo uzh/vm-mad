@@ -36,7 +36,7 @@ import time
 
 # local imports
 from vmmad import log
-from vmmad.util import random_password, Struct
+from vmmad.util import IndirectDict, random_password, Struct
 
 
 class JobInfo(Struct):
@@ -132,28 +132,15 @@ class VmInfo(Struct):
     ========= ============================================================
     STARTING  A request to start the VM has been sent to the Cloud provider,
               but the VM is not ready yet.
-    UP        The machine is up and running, and connected to the network.
     READY     The machine is ready to run jobs.
-    STOPPING  The remote VM has been frozen, but normal execution can be resumed.
-    DOWN      The VM has been stopped and cannot be restarted/resumed.
+    DRAINING  The VM is scheduled to stop, waiting for all batch jobs to terminate
+              before issuing the 'halt' command.
+    STOPPING  The 'halt' command is about to be issued to the cloud provider.
+    DOWN      The VM has been stopped and cannot be restarted/resumed;
+              once a VM reaches this state, it is removed from the list
+              of VMs at the next `Orchestrator` cycle.
     OTHER     Unexpected/unhandled state; usually signals an error.
     ========= ============================================================
-
-
-    The following attributes are available after the machine has
-    reached the ``UP`` state:
-
-    ============  ========  ================================================
-    attribute     type      meaning
-    ============  ========  ================================================
-    public_ip     str       public IP address in dot quad notation
-    private_ip    str       private IP address in dot quad notation
-    cloud         str       cloud identifier
-    started_at    datetime  when the request to start the machine was issued
-    ready_at      datetime  when the machine was first detected up and running
-    running_time  duration  total running time (in seconds)
-    bill          float     total cost to be billed by cloud provider (in US$)
-    ============  ========  ================================================
 
 
     The following attributes are available after the machine has
@@ -169,9 +156,9 @@ class VmInfo(Struct):
     """
 
     STARTING = 'STARTING'
-    UP = 'UP'
     READY = 'READY'
     STOPPING = 'STOPPING'
+    DRAINING = 'DRAINING'
     DOWN = 'DOWN'
     OTHER = 'OTHER'
 
@@ -185,7 +172,7 @@ class VmInfo(Struct):
         else:
             assert self.state in [
                 VmInfo.STARTING,
-                VmInfo.UP,
+                VmInfo.READY,
                 VmInfo.STOPPING,
                 VmInfo.DOWN,
                 VmInfo.OTHER
@@ -213,7 +200,7 @@ class VmInfo(Struct):
         """
         Return `True` if the VM is up or will soon be (i.e., it is starting now).
         """
-        return self.state in [VmInfo.STARTING, VmInfo.UP]
+        return self.state in [VmInfo.STARTING, VmInfo.READY]
 
 
 ## the main class of this file
@@ -244,9 +231,18 @@ class Orchestrator(object):
 
     The `threads` argument specifies the size of the thread pool that
     is used to perform blocking operations.
+
+    :param cloud:         A `vmmad.provider.NodeProvider` instance that is used to start/stop VMs.
+    :param batchsys:      A `vmmad.batchsys.BathcSystem` instance that is used to poll the batch system for jobs.
+    :param int max_vms:   Maximum number of VMs to start.
+    :param int max_delta: Maximum number of VMs to start/stop in one cycle.
+    :param int vm_start_timeout: Maximum amount of time (seconds) to wait for a VM to turn to ``READY`` state.
+    :param int threads:   Size of the thread pool for non-blocking operations.
     """
 
-    def __init__(self, cloud, batchsys, max_vms, max_delta=1, threads=8):
+    def __init__(self, cloud, batchsys,
+                 max_vms, max_delta=1, vm_start_timeout=10*60,
+                 threads=8):
         # thread pool to enqueue blocking operations
         self._threadpool = mp.Pool(threads)
         self._async = self._threadpool.apply_async # shortcut
@@ -267,10 +263,9 @@ class Orchestrator(object):
         self.max_delta = max_delta
         
         # VMs controlled by this `Orchestrator` instance (indexed by VMID)
-        self._started_vms = self._shm.dict()
-        self._stopping_vms = self._shm.dict()
-        self._active_vms = { }
-        self._waiting_for_auth = { }
+        self.vms = self._shm.dict()
+        self._pending_auth = { }
+        self._vms_by_nodename = { }
         
         # mapping jobid to job informations
         self.jobs = [ ]
@@ -284,6 +279,9 @@ class Orchestrator(object):
 
         # Time the job statuses were last checked
         self.last_update = 0
+
+        # if a VM does not turn to READY state within this time allowance, cancel it
+        self.vm_start_timeout = 10*60 # 10 minutes
 
 
     def run(self, delay=30, max_cycles=0):
@@ -301,62 +299,68 @@ class Orchestrator(object):
         last_cycle_at = self.time()
         while max_cycles == 0 or done < max_cycles:
             log.debug("Orchestrator %x about to start cycle %d", id(self), self.cycle)
-            now = self.time()
             t0 = time.time() # need real time, not the simulated one
-            
+            now = self.time()
+            elapsed = now - last_cycle_at
+
             self.before()
-            self.jobs = self.update_job_status()
+            self.update_job_status()
             # XXX: potentially blocking - should timeout!
-            self.cloud.update_vm_status(self._started_vms.values())
-            for vm in self._started_vms.values():
+            self.cloud.update_vm_status(self.vms.values())
+            for vm in self.vms.values():
+                if vm.state == VmInfo.DOWN:
+                    log.debug("VM %s is DOWN, removing it from managed VM list.", vm.vmid)
+                    del self.vms[vm.vmid]
+                    continue
+                if vm.state == VmInfo.STARTING and (self.time() - vm.started_at) > self.vm_start_timeout:
+                    log.debug("VM %s did not turn READY in %d seconds, scheduling its removal.",
+                              vm.vmid, self.vm_start_timeout)
+                    self._async(self._do_stop_vm, [vm])
+                if vm.state in [ VmInfo.READY, VmInfo.STOPPING, VmInfo.OTHER ]:
+                    vm.running_time += elapsed
                 if not vm.jobs:
-                    vm.total_idle += (now - last_cycle_at)
-                    vm.last_idle += (now - last_cycle_at)
+                    vm.total_idle += elapsed
+                    vm.last_idle += elapsed
                 else:
                     vm.last_idle = 0
 
             # start new VMs if needed
-            if self.is_new_vm_needed() and len(self._started_vms) < self.max_vms:
-                # new VMID
-                self._vmid += 1
-                # generate a random auth token and ensure it's not in use
-                passwd = random_password()
-                while passwd in self._waiting_for_auth:
+            for _ in xrange(self.max_delta):
+                if self.is_new_vm_needed() and len(self.vms) < self.max_vms:
+                    # new VMID
+                    self._vmid += 1
+                    # generate a random auth token and ensure it's not in use
                     passwd = random_password()
-                # bundle up all this into a VM object
-                new_vm = VmInfo(
-                    vmid=str(self._vmid),
-                    state=VmInfo.STARTING,
-                    auth=passwd,
-                    total_idle=0,
-                    last_idle=0,
-                    )
-                # start it!
-                self._waiting_for_auth[passwd] = new_vm
-                self._async(self._do_start_vm, (new_vm,))
+                    while passwd in self._pending_auth:
+                        passwd = random_password()
+                    # bundle up all this into a VM object
+                    new_vm = VmInfo(
+                        vmid=str(self._vmid),
+                        state=VmInfo.STARTING,
+                        auth=passwd,
+                        total_idle=0,
+                        last_idle=0,
+                        running_time=0,
+                        )
+                    # start it!
+                    self._async(self._do_start_vm, [new_vm])
+                else:
+                    break # no VM needed or limit reached, exit loop
 
             # stop VMs that are no longer needed
-            # XXX: We move the VmInfo object to a separate list so
-            # that it's no longer considered "started" and examined in
-            # this main loop: if the stopping process takes a long
-            # time, we might end up trying to stop the same instance
-            # twice concurrently, which we do not want or need.
-            # FIXME: The trick of modifying `self._started_vms` as we
+            # FIXME: The trick of modifying `self.vms` as we
             # iterate on it only works because (in Python 2.x), the
             # `.items()` method returns a *copy* of the items list; in
             # Python 3.x, where it returns an iterator, this construct
             # will *not* work!
-            for vmid, vm in self._started_vms.items():
-                if self.can_vm_be_stopped(vm):
+            for vmid, vm in self.vms.items():
+                if vm.state == VmInfo.READY and self.can_vm_be_stopped(vm):
                     if len(vm.jobs) > 0:
                         log.warning(
                             "Request to stop VM %s, but it's still running jobs: %s",
                             vm.vmid, str.join(' ', vm.jobs))
-                    self._stopping_vms[vmid] = vm
-                    if vm.state == VmInfo.READY:
-                        del self._active_vms[vm.nodename]
-                    del self._started_vms[vmid]
-                    self._async(self._do_stop_vm, (vm,))
+                    vm.state = VmInfo.STOPPING
+                    self._async(self._do_stop_vm, [vm])
 
             self.after()
             self.cycle +=1
@@ -374,39 +378,33 @@ class Orchestrator(object):
                     time.sleep(delay - elapsed)
 
     def _do_start_vm(self, vm):
-        assert vm.vmid not in self._started_vms
+        assert vm.vmid not in self.vms
         log.info("Starting VM %s ...", vm.vmid)
         try:
             self.cloud.start_vm(vm)
             vm.started_at = self.time()
-            self._started_vms[vm.vmid] = vm
+            self.vms[vm.vmid] = vm
+            self._pending_auth[vm.auth] = vm
             log.info("VM %s started, waiting for 'READY' notification.", vm.vmid)
         except Exception, ex:
             vm.state = VmInfo.DOWN
-            log.error("Error starting VM %s: %s: %s",
+            log.error("Error launching VM %s: %s: %s",
                       vm.vmid, ex.__class__.__name__, str(ex), exc_info=__debug__)
-            if vm.vmid in self._started_vms:
-                del _started_vms[vm.vmid]
 
     def _do_stop_vm(self, vm):
-        if vm.state == READY:
-            vm_was_ready = True
-        else:
-            vm_was_ready = False
-            
-        log.info("Stopping VM %s...", vm.vmid)
+        log.info("Stopping VM %s ...", vm.vmid)
         try:
             self.cloud.stop_vm(vm)
             vm.stopped_at = self.time()
-            del self._stopping_vms[vm.vmid]
             vm.state = VmInfo.DOWN
-            if vm_was_ready:
+            try:
                 been_running = (vm.stopped_at - vm.ready_at)
                 log.info("Stopped VM %s (%s);"
                          " it has run for %d seconds, been idle for %d of them (%.2f%%)",
                          vm.vmid, vm.nodename, been_running, vm.total_idle,
                          (100.0 * vm.total_idle / been_running))
-            else:
+            except AttributeError:
+                # if the machine was never ready, `.nodename` and `.ready_at` are unset
                 log.warning("Stopped VM %s (%s); it never reached READY status.")
         except Exception, ex:
             # XXX: This is more delicate than catching errors in the
@@ -421,6 +419,7 @@ class Orchestrator(object):
     def before(self):
         """Hook called at the start of the main run() cycle."""
         pass
+
 
     def after(self):
         """Hook called at the end of the main run() cycle."""
@@ -446,11 +445,13 @@ class Orchestrator(object):
         candidates for cloud execution).
         """
         now = self.time()
-        jobs = self.batchsys.get_sched_info()    
+        self.jobs = self.batchsys.get_sched_info()    
         
         # remove finished jobs
-        jobids = set(job.jobid for job in jobs)
-        for vm in self._active_vms.itervalues():
+        jobids = set(job.jobid for job in self.jobs)
+        active_vms = [ vm for vm in self.vms.values()
+                       if (vm.state in [ VmInfo.READY, VmInfo.DRAINING ]) ]
+        for vm in active_vms:
             # remove jobs that are no longer in the list, i.e., they are finished
             terminated = (vm.jobs - jobids)
             for jobid in terminated:
@@ -459,15 +460,15 @@ class Orchestrator(object):
             vm.jobs -= terminated
 
         # update info on running jobs
-        for job in jobs:
+        for job in self.jobs:
             if job.state == JobInfo.RUNNING and job.running_at > self.last_update:
-                log.info("Job %s was started on node '%s'", job.jobid, job.exec_node_name)
+                log.debug("Job %s running on node '%s'", job.jobid, job.exec_node_name)
                 # job just went running, it's longer a candidate
                 if job.jobid in self.candidates:
                     del self.candidates[job.jobid]
                 # record which jobs are running on which VM
-                if job.exec_node_name in self._active_vms:
-                    self._active_vms[job.exec_node_name].jobs.add(job.jobid)
+                if job.exec_node_name in self._vms_by_nodename:
+                    self._vms_by_nodename[job.exec_node_name].jobs.add(job.jobid)
             elif job.state == JobInfo.PENDING and job.submitted_at > self.last_update:
                 # update candidates' information
                 if self.is_cloud_candidate(job):
@@ -477,7 +478,7 @@ class Orchestrator(object):
                 pass
 
         self.last_update = now
-        return jobs
+        return self.jobs
     
 
     def vm_is_ready(self, auth, nodename):
@@ -493,18 +494,23 @@ class Orchestrator(object):
         reports to the batch system, i.e., the node name as it appears
         in the batch system scheduler listings/config. 
         """
-        if auth not in self._waiting_for_auth:
+        if auth not in self._pending_auth:
             log.error(
                 "Received notification that node '%s' is READY,"
                 " but authentication data does not match any started VM.  Ignoring.",
                 nodename)
             return False
-        vm = self._waiting_for_auth.pop(auth)
-        assert vm.state in [ VmInfo.STARTING, VmInfo.UP ]
+        vm = self._pending_auth.pop(auth)
+        assert vm.state == VmInfo.STARTING
         vm.state = VmInfo.READY
         vm.ready_at = self.time()
         vm.nodename = nodename
-        self._active_vms[nodename] = vm
+        if nodename in self._vms_by_nodename:
+            log.warning(
+                "Node name '%s' already registered to VM %s,"
+                " but re-registering to VM %s.",
+                nodename, self._vms_by_nodename[nodename].vmid, vm.vmid)
+        self._vms_by_nodename[nodename] = vm
         log.info("VM %s reports being ready as node '%s'", vm.vmid, nodename)
         return True
 
@@ -514,7 +520,8 @@ class Orchestrator(object):
     ##
     @abstractmethod
     def is_cloud_candidate(self, job):
-        """Return `True` if `job` can be run in a cloud node.
+        """
+        Return `True` if `job` can be run in a cloud node.
 
         Override in subclasses to define a different cloud-burst
         policy.
@@ -530,7 +537,8 @@ class Orchestrator(object):
 
     @abstractmethod
     def can_vm_be_stopped(self, vm):
-        """Return `True` if the VM identified by `vm` is no longer
+        """
+        Return `True` if the VM identified by `vm` is no longer
         needed and can be stopped.
         """
         pass

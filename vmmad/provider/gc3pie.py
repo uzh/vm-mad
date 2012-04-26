@@ -95,7 +95,8 @@ class SmscgProvider(NodeProvider):
             self.g.update_job_state(vm.gc3pie_app)
             # map GC3Pie status to `orchestrator.VmInfo.state` value
             if vm.gc3pie_app.execution.state == gc3libs.Run.State.RUNNING:
-                vm.state = VmInfo.UP
+                # no change to the state
+                pass
             elif vm.gc3pie_app.execution.state in [ gc3libs.Run.State.TERMINATING, gc3libs.Run.State.TERMINATED ]:
                 vm.state = VmInfo.DOWN
             elif vm.gc3pie_app.execution.state == gc3libs.Run.State.STOPPED:

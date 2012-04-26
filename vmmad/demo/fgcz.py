@@ -68,26 +68,16 @@ class DemoOrchestrator(OrchestratorWebApp):
         return (job.name.startswith('fgcz_sge_peakplot_glyco1_ng'))
 
     def is_new_vm_needed(self):
-        running = len([ job for job in self.jobs 
-                        if (job.state == JobInfo.RUNNING 
-                            and self.is_cloud_candidate(job))])
-        if len(self.candidates) > max(running, len(self._started_vms)):
+        # if we have more jobs queued than started VMs, start a new one
+        if len(self.candidates) > len(self.vms):
             return True
         return False
 
     def can_vm_be_stopped(self, vm):
-        TIMEOUT = 600 
-        if vm.state == VmInfo.READY:
-            if len(vm.jobs) == 0 and (self.time() - vm.ready_at > TIMEOUT):
-                return True
-            else:
-                log.debug("Not stopping VM %s: %d jobs running, %d seconds idle.",
-                          vm.nodename, len(vm.jobs), (self.time() - vm.ready_at > TIMEOUT))
-                return False
+        TIMEOUT = 10*60 # 10 minutes
+        if len(vm.jobs) == 0 and (vm.last_idle > TIMEOUT):
+            return True
         else:
-            if self.time() - vm.started_at > TIMEOUT:
-                return True
-            else:
-                log.debug("Not stopping VM %s: started since %d seconds.",
-                          vm.vmid, (self.time() - vm.started_at > TIMEOUT))
-                return False
+            log.debug("Not stopping VM %s: %d jobs running, %d seconds idle.",
+                      vm.nodename, len(vm.jobs), vm.last_idle)
+            return False
