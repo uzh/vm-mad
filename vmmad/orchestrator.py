@@ -69,10 +69,10 @@ class JobInfo(Struct):
     """
 
     # job states
-    PENDING = 1
-    RUNNING = 2
-    FINISHED = 3
-    OTHER = 0
+    PENDING = 'PENDING'
+    RUNNING = 'RUNNING'
+    FINISHED = 'FINISHED'
+    OTHER = 'OTHER'
 
     def __init__(self, *args, **kwargs):
         Struct.__init__(self, *args, **kwargs)
