@@ -51,9 +51,7 @@ class DemoOrchestrator(OrchestratorWebApp):
         OrchestratorWebApp.__init__(
             self,
             delay=30,
-            cloud=EC2Cloud(image='ami-c2419aab', kind='m1.small',
-                           access_id='AKIAJ4RPJXT5OPX6WW2A', 
-                           secret_key='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'),
+            cloud=EC2Cloud(image='ami-c2419aab', kind='m1.small'),
             #cloud=SmscgProvider(),
             batchsys=GridEngine('bfabric'),
             #batchsys=RandomJobs(3, 0.25, timer=self.time),
