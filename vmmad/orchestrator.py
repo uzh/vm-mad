@@ -248,8 +248,9 @@ class Orchestrator(object):
 
     def __init__(self, cloud, batchsys, max_vms, max_delta=1, threads=8):
         # thread pool to enqueue blocking operations
-        self._par = mp.Pool(threads)
-
+        self._threadpool = mp.Pool(threads)
+        self._async = self._threadpool.apply_async # shortcut
+        
         # allocator for shared memory objects
         self._shm = mp.Manager()
         
@@ -328,10 +329,11 @@ class Orchestrator(object):
                     state=VmInfo.STARTING,
                     auth=passwd,
                     total_idle=0,
-                    last_idle=0)
+                    last_idle=0,
+                    )
                 # start it!
                 self._waiting_for_auth[passwd] = new_vm
-                self._par.apply_async(self._asynch_start_vm, (new_vm,))
+                self._async(self._do_start_vm, (new_vm,))
 
             # stop VMs that are no longer needed
             # XXX: We move the VmInfo object to a separate list so
@@ -354,7 +356,7 @@ class Orchestrator(object):
                     if vm.state == VmInfo.READY:
                         del self._active_vms[vm.nodename]
                     del self._started_vms[vmid]
-                    self._par.apply_async(self._asynch_stop_vm, (vm,))
+                    self._async(self._do_stop_vm, (vm,))
 
             self.after()
             self.cycle +=1
@@ -371,7 +373,7 @@ class Orchestrator(object):
                 else:
                     time.sleep(delay - elapsed)
 
-    def _asynch_start_vm(self, vm):
+    def _do_start_vm(self, vm):
         assert vm.vmid not in self._started_vms
         log.info("Starting VM %s ...", vm.vmid)
         try:
@@ -386,7 +388,7 @@ class Orchestrator(object):
             if vm.vmid in self._started_vms:
                 del _started_vms[vm.vmid]
 
-    def _asynch_stop_vm(self, vm):
+    def _do_stop_vm(self, vm):
         if vm.state == READY:
             vm_was_ready = True
         else:
