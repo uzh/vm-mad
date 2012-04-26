@@ -48,8 +48,8 @@ class VmmadAppPot(AppPotApplication):
             AppPotApplication.__init__(
                     self,
                     apppot_extra = [ ("VMMAD_AUTH='%s'" % vm.auth) ],
-                    executable = "sleep",
-                    arguments = ["365d"],
+                    executable = 'tail',
+                    arguments = ['-F', '/var/log/vmmad.log'],
                     inputs = [], 
                     outputs = [],   
                     output_dir = vm_output_dir,
