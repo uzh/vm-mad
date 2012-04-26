@@ -98,7 +98,7 @@ class JobsFromFile(object):
         # if `start_time` has not been set, then use earliest job
         # submission time as starting point
         if start_time == -1:
-            self.start_time = self.future_jobs[-1].submitted_at
+            self.start_time = self.future_jobs[-1].submitted_at 
         else:
             self.start_time = start_time
 
@@ -129,10 +129,11 @@ class JobsFromFile(object):
         return self.jobs
 
     def next_jobs(self, since, until):
+        assert until > since
         while len(self.future_jobs) > 0:
             job = self.future_jobs.pop()
-            if since > job.submitted_at:
-                if job.submitted_at <= until:
+            if until >= job.submitted_at:
+                if job.submitted_at >= since:
                     yield job
                 else:
                     # job is in the past (relative to the Simulator's concept of time) so ignore it
