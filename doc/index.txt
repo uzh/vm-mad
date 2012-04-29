@@ -13,6 +13,7 @@ Contents:
    
    install
    api
+   commands 
 
 
 Indices and tables

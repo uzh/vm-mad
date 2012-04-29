@@ -23,6 +23,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="VM-MAD vdevelopment (SVN $Revision$) documentation" href="index.html" />
+    <link rel="next" title="Commands in VM-MAD" href="commands.html" />
     <link rel="prev" title="Installation of VM-MAD" href="install.html" /> 
   </head>
   <body>
@@ -33,8 +34,8 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
+          <a href="commands.html" title="Commands in VM-MAD"
+             accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="install.html" title="Installation of VM-MAD"
              accesskey="P">previous</a> |</li>
@@ -49,227 +50,14 @@
             
   <div class="section" id="vm-mad-modules">
 <h1>VM-MAD modules<a class="headerlink" href="#vm-mad-modules" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-orchestrator">
-<span id="orchestrator"></span><h2><cite>orchestrator</cite><a class="headerlink" href="#module-orchestrator" title="Permalink to this headline">¶</a></h2>
-<p>Launch compute node VMs on demand.</p>
-<dl class="class">
-<dt id="orchestrator.JobInfo">
-<em class="property">class </em><tt class="descclassname">orchestrator.</tt><tt class="descname">JobInfo</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#JobInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.JobInfo" title="Permalink to this definition">¶</a></dt>
-<dd><p>Record data about a job in the batch system.</p>
-<p>A <cite>JobInfo</cite> object is basically a free-form record, but the
-constructor still enforces the following constraints:</p>
-<ul class="simple">
-<li>There must be a <cite>state</cite> attribute, whose value is one of <cite>JobInfo.PENDING</cite>, <cite>JobInfo,RUNNING</cite>, <cite>JobInfo.FINISHED</cite> or <cite>JobInfo.OTHER</cite>.</li>
-<li>There must be a non-empty <cite>jobid</cite> attribute.</li>
-</ul>
-<p>Running jobs have a (string) <cite>exec_node_name</cite> attribute, which is
-used to match the associated VM (if any) by host name.</p>
-<dl class="method">
-<dt id="orchestrator.JobInfo.is_running">
-<tt class="descname">is_running</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/orchestrator.html#JobInfo.is_running"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.JobInfo.is_running" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return <cite>True</cite> if the job is running.</p>
-<p>A running job is guaranteed to have a valid <cite>exec_node_name</cite>
-attribute.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="orchestrator.Orchestrator">
-<em class="property">class </em><tt class="descclassname">orchestrator.</tt><tt class="descname">Orchestrator</tt><big>(</big><em>cloud</em>, <em>max_vms</em>, <em>max_delta=1</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator" title="Permalink to this definition">¶</a></dt>
-<dd><p>The <cite>Orchestrator</cite> monitors a job queue and starts/stops VMs
-according to a pre-defined policy in order to offload jobs from
-the queue.</p>
-<p><cite>Orchestrator</cite> is an abstract class that cannot be directly
-instanciated: subclassing is needed to define a policy and
-implement interfaces to an actual queuing system and cloud
-backend.</p>
-<p>The actual VM start/stop policy is defined by overriding methods
-<cite>is_new_vm_needed</cite> and <cite>can_vm_be_stopped</cite>.  Each of these methods
-can access a list of candidate jobs as attribute
-<cite>self.candidates</cite>; the <cite>can_vm_be_stopped</cite> method is additionally
-passed a <cite>VmInfo</cite> object and can inspect data from that VM.</p>
-<p>The only method required to interface to a batch queueing system
-is <cite>get_sched_info</cite>, which see for its interface and purpose.</p>
-<p>The <cite>cloud</cite> argument must be an object that implements the interface
-defined by the abstract class <cite>vmmad.cloud.Cloud</cite>.</p>
-<dl class="method">
-<dt id="orchestrator.Orchestrator.after">
-<tt class="descname">after</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.after"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.after" title="Permalink to this definition">¶</a></dt>
-<dd><p>Hook called at the end of the main run() cycle.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="orchestrator.Orchestrator.before">
-<tt class="descname">before</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.before"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.before" title="Permalink to this definition">¶</a></dt>
-<dd><p>Hook called at the start of the main run() cycle.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="orchestrator.Orchestrator.can_vm_be_stopped">
-<tt class="descname">can_vm_be_stopped</tt><big>(</big><em>vm</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.can_vm_be_stopped"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.can_vm_be_stopped" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return <cite>True</cite> if the VM identified by <cite>vm</cite> is no longer
-needed and can be stopped.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="orchestrator.Orchestrator.get_sched_info">
-<tt class="descname">get_sched_info</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.get_sched_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.get_sched_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Query the job scheduler and return a list of <cite>JobInfo</cite> objects
-representing the jobs in the batch queue system.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="orchestrator.Orchestrator.get_time_step">
-<tt class="descname">get_time_step</tt><big>(</big><big>)</big><a class="headerlink" href="#orchestrator.Orchestrator.get_time_step" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the variable used for incrementation of the time</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="orchestrator.Orchestrator.is_cloud_candidate">
-<tt class="descname">is_cloud_candidate</tt><big>(</big><em>job</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.is_cloud_candidate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.is_cloud_candidate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return <cite>True</cite> if <cite>job</cite> can be run in a cloud node.</p>
-<p>Override in subclasses to define a different cloud-burst
-policy.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="orchestrator.Orchestrator.is_new_vm_needed">
-<tt class="descname">is_new_vm_needed</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.is_new_vm_needed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.is_new_vm_needed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inspect job collection and decide whether we need to start new VMs.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="orchestrator.Orchestrator.run">
-<tt class="descname">run</tt><big>(</big><em>delay=30</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run the orchestrator until stopped.</p>
-<p>Every <cite>delay</cite> seconds, the following operations are performed
-in sequence:</p>
-<ul class="simple">
-<li>update job and VM status;</li>
-<li>start new VMs if needed;</li>
-<li>stop running VMs if they are no longer needed.</li>
-</ul>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="orchestrator.VmInfo">
-<em class="property">class </em><tt class="descclassname">orchestrator.</tt><tt class="descname">VmInfo</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#VmInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.VmInfo" title="Permalink to this definition">¶</a></dt>
-<dd><p>Record data about a started VM instance.</p>
-<p>A <cite>VmInfo</cite> object is mostly a free-form record, but the
-constructor still enforces the following constraints:</p>
-<ul class="simple">
-<li>There must be a non-empty <cite>vmid</cite> attribute.</li>
-</ul>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>The <cite>vmid</cite> attribute must be unique among all <cite>VmInfo</cite> instances!</p>
-<p class="last"><strong>FIXME:</strong> This is not currently enforced by the constructor.</p>
+<div class="section" id="orchestrator">
+<h2><cite>orchestrator</cite><a class="headerlink" href="#orchestrator" title="Permalink to this headline">¶</a></h2>
 </div>
-<p>The <cite>state</cite> attribute is set to one of the following strings
-(defaults to <cite>DOWN</cite> if not given in the constructor):</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="12%" />
-<col width="88%" />
-</colgroup>
-<thead valign="bottom">
-<tr><th class="head">status</th>
-<th class="head">meaning</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr><td>STARTING</td>
-<td>A request to start the VM has been sent to the Cloud provider,
-but the VM is not ready yet.</td>
-</tr>
-<tr><td>UP</td>
-<td>The machine is up and running, and connected to the network.</td>
-</tr>
-<tr><td>STOPPING</td>
-<td>The remote VM has been frozen, but normal execution can be resumed.</td>
-</tr>
-<tr><td>DOWN</td>
-<td>The VM has been stopped and cannot be restarted/resumed.</td>
-</tr>
-<tr><td>OTHER</td>
-<td>Unexpected/unhandled state; usually signals an error.</td>
-</tr>
-</tbody>
-</table>
-<p>The following attributes are available after the machine has
-reached the <tt class="docutils literal"><span class="pre">UP</span></tt> state:</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="17%" />
-<col width="11%" />
-<col width="71%" />
-</colgroup>
-<thead valign="bottom">
-<tr><th class="head">attribute</th>
-<th class="head">type</th>
-<th class="head">meaning</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr><td>public_ip</td>
-<td>str</td>
-<td>public IP address in dot quad notation</td>
-</tr>
-<tr><td>private_ip</td>
-<td>str</td>
-<td>private IP address in dot quad notation</td>
-</tr>
-<tr><td>cloud</td>
-<td>str</td>
-<td>cloud identifier</td>
-</tr>
-<tr><td>started_at</td>
-<td>datetime</td>
-<td>when the request to start the machine was issued</td>
-</tr>
-<tr><td>up_at</td>
-<td>datetime</td>
-<td>when the machine was first detected up and running</td>
-</tr>
-<tr><td>running_time</td>
-<td>duration</td>
-<td>total running time (in seconds)</td>
-</tr>
-<tr><td>bill</td>
-<td>float</td>
-<td>total cost to be billed by cloud provider (in US$)</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="orchestrator.VmInfo.is_alive">
-<tt class="descname">is_alive</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/orchestrator.html#VmInfo.is_alive"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.VmInfo.is_alive" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return <cite>True</cite> if the VM is up or will soon be (i.e., it is starting now).</p>
-</dd></dl>
-
-</dd></dl>
-
+<div class="section" id="simul">
+<h2><cite>simul</cite><a class="headerlink" href="#simul" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-simul">
-<span id="simul"></span><h2><cite>simul</cite><a class="headerlink" href="#module-simul" title="Permalink to this headline">¶</a></h2>
-<p>Simulate an <cite>Orchestrator</cite> run given some parameters.</p>
-</div>
-<div class="section" id="module-ge_info">
-<span id="ge-info"></span><h2><cite>ge_info</cite><a class="headerlink" href="#module-ge_info" title="Permalink to this headline">¶</a></h2>
-<p>Functions to get information about a Sun/Oracle/Open Grid Engine
-cluster status.</p>
-<dl class="function">
-<dt id="ge_info.get_sched_info">
-<tt class="descclassname">ge_info.</tt><tt class="descname">get_sched_info</tt><big>(</big><em>qstat_xml_out=None</em><big>)</big><a class="headerlink" href="#ge_info.get_sched_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse the output of a <cite>qstat -xml</cite> command and return a
-tuple <cite>(jobid,submit_time,duration)</cite>, where each item is a list of
-dictionary-like objects whose keys/attributes directly map the
-XML contents.</p>
-</dd></dl>
-
+<div class="section" id="ge-info">
+<h2><cite>ge_info</cite><a class="headerlink" href="#ge-info" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 
@@ -282,9 +70,9 @@ XML contents.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">VM-MAD modules</a><ul>
-<li><a class="reference internal" href="#module-orchestrator"><cite>orchestrator</cite></a></li>
-<li><a class="reference internal" href="#module-simul"><cite>simul</cite></a></li>
-<li><a class="reference internal" href="#module-ge_info"><cite>ge_info</cite></a></li>
+<li><a class="reference internal" href="#orchestrator"><cite>orchestrator</cite></a></li>
+<li><a class="reference internal" href="#simul"><cite>simul</cite></a></li>
+<li><a class="reference internal" href="#ge-info"><cite>ge_info</cite></a></li>
 </ul>
 </li>
 </ul>
@@ -292,6 +80,9 @@ XML contents.</p>
   <h4>Previous topic</h4>
   <p class="topless"><a href="install.html"
                         title="previous chapter">Installation of VM-MAD</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="commands.html"
+                        title="next chapter">Commands in VM-MAD</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/api.txt"
@@ -321,8 +112,8 @@ XML contents.</p>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
+          <a href="commands.html" title="Commands in VM-MAD"
+             >next</a> |</li>
         <li class="right" >
           <a href="install.html" title="Installation of VM-MAD"
              >previous</a> |</li>
