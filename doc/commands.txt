@@ -24,7 +24,8 @@ Simulation
 This section treats the simulation part of VM-MAD. 
 
     * Before starting the simulation a distiled accounting data has to be available. 
-    The distil.py tool has been provided for automating this part. 
+    The distil.py tool has been provided for automating this part.
+ 
     * Once the accounting data is available a simulation can be started using the simul.py
     tool. 
 

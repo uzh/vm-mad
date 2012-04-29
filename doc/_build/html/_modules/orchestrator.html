@@ -69,19 +69,22 @@
 <span class="c"># See the License for the specific language governing permissions and</span>
 <span class="c"># limitations under the License.</span>
 <span class="c">#</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
 <span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText&#39;</span>
 <span class="n">__version__</span> <span class="o">=</span> <span class="s">&#39;$Revision$&#39;</span>
 
 
 <span class="c"># stdlib imports</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span> <span class="nn">multiprocessing.dummy</span> <span class="kn">as</span> <span class="nn">mp</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">time</span>
 
 <span class="c"># local imports</span>
 <span class="kn">from</span> <span class="nn">vmmad</span> <span class="kn">import</span> <span class="n">log</span>
-<span class="kn">from</span> <span class="nn">util</span> <span class="kn">import</span> <span class="n">Struct</span>
+<span class="kn">from</span> <span class="nn">vmmad.util</span> <span class="kn">import</span> <span class="n">random_password</span><span class="p">,</span> <span class="n">Struct</span>
 
 
 <div class="viewcode-block" id="JobInfo"><a class="viewcode-back" href="../api.html#orchestrator.JobInfo">[docs]</a><span class="k">class</span> <span class="nc">JobInfo</span><span class="p">(</span><span class="n">Struct</span><span class="p">):</span>
@@ -91,18 +94,33 @@
 <span class="sd">    A `JobInfo` object is basically a free-form record, but the</span>
 <span class="sd">    constructor still enforces the following constraints:</span>
 
-<span class="sd">    * There must be a `state` attribute, whose value is one of `JobInfo.PENDING`, `JobInfo,RUNNING`, `JobInfo.FINISHED` or `JobInfo.OTHER`.</span>
+<span class="sd">    * There must be a `state` attribute, whose value is one of those listed below.</span>
 <span class="sd">    * There must be a non-empty `jobid` attribute.</span>
 
-<span class="sd">    Running jobs have a (string) `exec_node_name` attribute, which is</span>
-<span class="sd">    used to match the associated VM (if any) by host name.</span>
+<span class="sd">    The `state` attribute is set to one of the following strings</span>
+<span class="sd">    (defaults to `DOWN` if not given in the constructor):</span>
+
+<span class="sd">    ========= ============================================================</span>
+<span class="sd">    state     meaning</span>
+<span class="sd">    ========= ============================================================</span>
+<span class="sd">    PENDING   The job is waiting in the batch system queue.</span>
+<span class="sd">    RUNNING   The job is currently executing on some node.</span>
+<span class="sd">    FINISHED  The job is done and any exec node it used is now clear</span>
+<span class="sd">              for re-use by another job.</span>
+<span class="sd">    OTHER     Unexpected/unhandled state; usually signals an error.</span>
+<span class="sd">    ========= ============================================================</span>
+
+<span class="sd">    Jobs in ``RUNNING`` state have a (string) `exec_node_name`</span>
+<span class="sd">    attribute, which is used to match the associated VM (if any) by</span>
+<span class="sd">    host name.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c"># job states</span>
-    <span class="n">PENDING</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">RUNNING</span> <span class="o">=</span> <span class="mi">2</span>
-    <span class="n">FINISHED</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">OTHER</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s">&#39;PENDING&#39;</span>
+    <span class="n">RUNNING</span> <span class="o">=</span> <span class="s">&#39;RUNNING&#39;</span>
+    <span class="n">FINISHED</span> <span class="o">=</span> <span class="s">&#39;FINISHED&#39;</span>
+    <span class="n">OTHER</span> <span class="o">=</span> <span class="s">&#39;OTHER&#39;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">Struct</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -116,6 +134,15 @@
             <span class="n">JobInfo</span><span class="o">.</span><span class="n">OTHER</span>
             <span class="p">],</span> \
             <span class="p">(</span><span class="s">&quot;Invalid state &#39;</span><span class="si">%s</span><span class="s">&#39; for JobInfo object </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Use the Job id as unique hash value.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">jobid</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s">&quot;Job </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobid</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="JobInfo.is_running"><a class="viewcode-back" href="../api.html#orchestrator.JobInfo.is_running">[docs]</a>    <span class="k">def</span> <span class="nf">is_running</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -158,32 +185,33 @@
 <span class="sd">    ========= ============================================================</span>
 <span class="sd">    STARTING  A request to start the VM has been sent to the Cloud provider,</span>
 <span class="sd">              but the VM is not ready yet.</span>
-<span class="sd">    UP        The machine is up and running, and connected to the network.</span>
-<span class="sd">    STOPPING  The remote VM has been frozen, but normal execution can be resumed.</span>
-<span class="sd">    DOWN      The VM has been stopped and cannot be restarted/resumed.</span>
+<span class="sd">    READY     The machine is ready to run jobs.</span>
+<span class="sd">    DRAINING  The VM is scheduled to stop, waiting for all batch jobs to terminate</span>
+<span class="sd">              before issuing the &#39;halt&#39; command.</span>
+<span class="sd">    STOPPING  The &#39;halt&#39; command is about to be issued to the cloud provider.</span>
+<span class="sd">    DOWN      The VM has been stopped and cannot be restarted/resumed;</span>
+<span class="sd">              once a VM reaches this state, it is removed from the list</span>
+<span class="sd">              of VMs at the next `Orchestrator` cycle.</span>
 <span class="sd">    OTHER     Unexpected/unhandled state; usually signals an error.</span>
 <span class="sd">    ========= ============================================================</span>
 
 
 <span class="sd">    The following attributes are available after the machine has</span>
-<span class="sd">    reached the ``UP`` state:</span>
+<span class="sd">    reached the ``READY`` state:</span>
 
 <span class="sd">    ============  ========  ================================================</span>
 <span class="sd">    attribute     type      meaning</span>
 <span class="sd">    ============  ========  ================================================</span>
-<span class="sd">    public_ip     str       public IP address in dot quad notation</span>
-<span class="sd">    private_ip    str       private IP address in dot quad notation</span>
-<span class="sd">    cloud         str       cloud identifier</span>
-<span class="sd">    started_at    datetime  when the request to start the machine was issued</span>
-<span class="sd">    up_at         datetime  when the machine was first detected up and running</span>
-<span class="sd">    running_time  duration  total running time (in seconds)</span>
-<span class="sd">    bill          float     total cost to be billed by cloud provider (in US$)</span>
+<span class="sd">    ready_at      datetime  when the machine notified it&#39;s ready to run jobs</span>
+<span class="sd">    jobs          list      list of Job IDs of jobs running on this node</span>
+<span class="sd">    nodename      str       machine node name (as reported in the batch system listing)</span>
 <span class="sd">    ============  ========  ================================================</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">STARTING</span> <span class="o">=</span> <span class="s">&#39;STARTING&#39;</span>
-    <span class="n">UP</span> <span class="o">=</span> <span class="s">&#39;UP&#39;</span>
+    <span class="n">READY</span> <span class="o">=</span> <span class="s">&#39;READY&#39;</span>
     <span class="n">STOPPING</span> <span class="o">=</span> <span class="s">&#39;STOPPING&#39;</span>
+    <span class="n">DRAINING</span> <span class="o">=</span> <span class="s">&#39;DRAINING&#39;</span>
     <span class="n">DOWN</span> <span class="o">=</span> <span class="s">&#39;DOWN&#39;</span>
     <span class="n">OTHER</span> <span class="o">=</span> <span class="s">&#39;OTHER&#39;</span>
 
@@ -194,9 +222,27 @@
         <span class="c"># provide defaults</span>
         <span class="k">if</span> <span class="s">&#39;state&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">DOWN</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="n">VmInfo</span><span class="o">.</span><span class="n">STARTING</span><span class="p">,</span>
+                <span class="n">VmInfo</span><span class="o">.</span><span class="n">READY</span><span class="p">,</span>
+                <span class="n">VmInfo</span><span class="o">.</span><span class="n">STOPPING</span><span class="p">,</span>
+                <span class="n">VmInfo</span><span class="o">.</span><span class="n">DOWN</span><span class="p">,</span>
+                <span class="n">VmInfo</span><span class="o">.</span><span class="n">OTHER</span>
+                <span class="p">]</span>
         <span class="k">if</span> <span class="s">&#39;bill&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
-            <span class="n">bill</span> <span class="o">=</span> <span class="mf">0.0</span>
-        
+            <span class="bp">self</span><span class="o">.</span><span class="n">bill</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="s">&#39;jobs&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s">&#39;nodename&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="s">&quot;VM Node &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodename</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="s">&quot;VM </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmid</span><span class="p">)</span>
+    <span class="n">__repr__</span> <span class="o">=</span> <span class="n">__str__</span>
+
     
     <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Use the VM id as unique hash value.&quot;&quot;&quot;</span>
@@ -207,7 +253,7 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return `True` if the VM is up or will soon be (i.e., it is starting now).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="n">VmInfo</span><span class="o">.</span><span class="n">STARTING</span><span class="p">,</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">UP</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="n">VmInfo</span><span class="o">.</span><span class="n">STARTING</span><span class="p">,</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">READY</span><span class="p">]</span>
 
 
 <span class="c">## the main class of this file</span>
@@ -229,17 +275,39 @@
 <span class="sd">    `self.candidates`; the `can_vm_be_stopped` method is additionally</span>
 <span class="sd">    passed a `VmInfo` object and can inspect data from that VM.</span>
 
-<span class="sd">    The only method required to interface to a batch queueing system</span>
-<span class="sd">    is `get_sched_info`, which see for its interface and purpose.</span>
-
 <span class="sd">    The `cloud` argument must be an object that implements the interface</span>
 <span class="sd">    defined by the abstract class `vmmad.cloud.Cloud`.</span>
+
+<span class="sd">    The `batchsys` argument must be an object that implements the</span>
+<span class="sd">    interface defined by the abstract class</span>
+<span class="sd">    `vmmad.batchsys.BatchSystem`:class: (which see for details).</span>
+
+<span class="sd">    The `threads` argument specifies the size of the thread pool that</span>
+<span class="sd">    is used to perform blocking operations.</span>
+
+<span class="sd">    :param cloud:         A `vmmad.provider.NodeProvider` instance that is used to start/stop VMs.</span>
+<span class="sd">    :param batchsys:      A `vmmad.batchsys.BathcSystem` instance that is used to poll the batch system for jobs.</span>
+<span class="sd">    :param int max_vms:   Maximum number of VMs to start.</span>
+<span class="sd">    :param int max_delta: Maximum number of VMs to start/stop in one cycle.</span>
+<span class="sd">    :param int vm_start_timeout: Maximum amount of time (seconds) to wait for a VM to turn to ``READY`` state.</span>
+<span class="sd">    :param int threads:   Size of the thread pool for non-blocking operations.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cloud</span><span class="p">,</span> <span class="n">max_vms</span><span class="p">,</span> <span class="n">max_delta</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cloud</span><span class="p">,</span> <span class="n">batchsys</span><span class="p">,</span>
+                 <span class="n">max_vms</span><span class="p">,</span> <span class="n">max_delta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">vm_start_timeout</span><span class="o">=</span><span class="mi">10</span><span class="o">*</span><span class="mi">60</span><span class="p">,</span>
+                 <span class="n">threads</span><span class="o">=</span><span class="mi">8</span><span class="p">):</span>
+        <span class="c"># thread pool to enqueue blocking operations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_threadpool</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">threads</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_async</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_threadpool</span><span class="o">.</span><span class="n">apply_async</span> <span class="c"># shortcut</span>
+        
+        <span class="c"># allocator for shared memory objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shm</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Manager</span><span class="p">()</span>
+        
         <span class="c"># cloud provider</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span> <span class="o">=</span> <span class="n">cloud</span>
+
+        <span class="c"># batch system interface</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batchsys</span> <span class="o">=</span> <span class="n">batchsys</span>
         
         <span class="c"># max number of VMs that are allocated on the cloud</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_vms</span> <span class="o">=</span> <span class="n">max_vms</span>
@@ -247,52 +315,160 @@
         <span class="c"># max number of VMs that can be started each cycle</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_delta</span> <span class="o">=</span> <span class="n">max_delta</span>
         
-        <span class="c"># list of VMs controlled by this `Orchestrator` instance</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-
+        <span class="c"># VMs controlled by this `Orchestrator` instance (indexed by VMID)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shm</span><span class="o">.</span><span class="n">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_auth</span> <span class="o">=</span> <span class="p">{</span> <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vms_by_nodename</span> <span class="o">=</span> <span class="p">{</span> <span class="p">}</span>
+        
         <span class="c"># mapping jobid to job informations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span> <span class="o">=</span> <span class="p">[</span> <span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span> <span class="o">=</span> <span class="p">{</span> <span class="p">}</span>
 
         <span class="c"># VM book-keeping</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span> <span class="o">=</span> <span class="mi">0</span>
         
+        <span class="c"># Time simulation variable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cycle</span> <span class="o">=</span> <span class="mi">0</span>
 
-<div class="viewcode-block" id="Orchestrator.run"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">30</span><span class="p">):</span>
+        <span class="c"># Time the job statuses were last checked</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_update</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c"># if a VM does not turn to READY state within this time allowance, cancel it</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vm_start_timeout</span> <span class="o">=</span> <span class="mi">10</span><span class="o">*</span><span class="mi">60</span> <span class="c"># 10 minutes</span>
+
+
+<div class="viewcode-block" id="Orchestrator.run"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">max_cycles</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Run the orchestrator until stopped.</span>
+<span class="sd">        Run the orchestrator main loop until stopped or `max_cycles` reached.</span>
 
 <span class="sd">        Every `delay` seconds, the following operations are performed</span>
 <span class="sd">        in sequence:</span>
-<span class="sd">          - update job and VM status;</span>
-<span class="sd">          - start new VMs if needed;</span>
-<span class="sd">          - stop running VMs if they are no longer needed.</span>
+
+<span class="sd">        - update job and VM status;</span>
+<span class="sd">        - start new VMs if needed;</span>
+<span class="sd">        - stop running VMs if they are no longer needed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">last_cycle_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">while</span> <span class="n">max_cycles</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">done</span> <span class="o">&lt;</span> <span class="n">max_cycles</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Orchestrator </span><span class="si">%x</span><span class="s"> about to start cycle </span><span class="si">%d</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cycle</span><span class="p">)</span>
+            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="c"># need real time, not the simulated one</span>
+            <span class="n">now</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">last_cycle_at</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">before</span><span class="p">()</span>
-            
             <span class="bp">self</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">update_vm_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="p">)</span>
+            <span class="c"># XXX: potentially blocking - should timeout!</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">update_vm_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vms</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vms</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">DOWN</span><span class="p">:</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;VM </span><span class="si">%s</span><span class="s"> is DOWN, removing it from managed VM list.&quot;</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">)</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">vms</span><span class="p">[</span><span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">]</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">STARTING</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">vm</span><span class="o">.</span><span class="n">started_at</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">vm_start_timeout</span><span class="p">:</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;VM </span><span class="si">%s</span><span class="s"> did not turn READY in </span><span class="si">%d</span><span class="s"> seconds, scheduling its removal.&quot;</span><span class="p">,</span>
+                              <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vm_start_timeout</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_async</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_do_stop_vm</span><span class="p">,</span> <span class="p">[</span><span class="n">vm</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">READY</span><span class="p">,</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">STOPPING</span><span class="p">,</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">OTHER</span> <span class="p">]:</span>
+                    <span class="n">vm</span><span class="o">.</span><span class="n">running_time</span> <span class="o">+=</span> <span class="n">elapsed</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">vm</span><span class="o">.</span><span class="n">jobs</span><span class="p">:</span>
+                    <span class="n">vm</span><span class="o">.</span><span class="n">total_idle</span> <span class="o">+=</span> <span class="n">elapsed</span>
+                    <span class="n">vm</span><span class="o">.</span><span class="n">last_idle</span> <span class="o">+=</span> <span class="n">elapsed</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">vm</span><span class="o">.</span><span class="n">last_idle</span> <span class="o">=</span> <span class="mi">0</span>
 
             <span class="c"># start new VMs if needed</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_new_vm_needed</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_vms</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="n">new_vm</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="p">(</span><span class="n">vmid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span><span class="p">,</span> <span class="n">jobs</span><span class="o">=</span><span class="nb">set</span><span class="p">())</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">start_vm</span><span class="p">(</span><span class="n">new_vm</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">new_vm</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_vm</span><span class="p">)</span>
-                    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Started VM </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_delta</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_new_vm_needed</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vms</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_vms</span><span class="p">:</span>
+                    <span class="c"># new VMID</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="c"># generate a random auth token and ensure it&#39;s not in use</span>
+                    <span class="n">passwd</span> <span class="o">=</span> <span class="n">random_password</span><span class="p">()</span>
+                    <span class="k">while</span> <span class="n">passwd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_auth</span><span class="p">:</span>
+                        <span class="n">passwd</span> <span class="o">=</span> <span class="n">random_password</span><span class="p">()</span>
+                    <span class="c"># bundle up all this into a VM object</span>
+                    <span class="n">new_vm</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="p">(</span>
+                        <span class="n">vmid</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vmid</span><span class="p">),</span>
+                        <span class="n">state</span><span class="o">=</span><span class="n">VmInfo</span><span class="o">.</span><span class="n">STARTING</span><span class="p">,</span>
+                        <span class="n">auth</span><span class="o">=</span><span class="n">passwd</span><span class="p">,</span>
+                        <span class="n">total_idle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">last_idle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">running_time</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="c"># start it!</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_async</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_do_start_vm</span><span class="p">,</span> <span class="p">[</span><span class="n">new_vm</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">break</span> <span class="c"># no VM needed or limit reached, exit loop</span>
 
             <span class="c"># stop VMs that are no longer needed</span>
-            <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="nb">frozenset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="p">):</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_vm_be_stopped</span><span class="p">(</span><span class="n">vm</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">stop_vm</span><span class="p">(</span><span class="n">vm</span><span class="p">):</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_started_vms</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">vm</span><span class="p">)</span>
+            <span class="c"># FIXME: The trick of modifying `self.vms` as we</span>
+            <span class="c"># iterate on it only works because (in Python 2.x), the</span>
+            <span class="c"># `.items()` method returns a *copy* of the items list; in</span>
+            <span class="c"># Python 3.x, where it returns an iterator, this construct</span>
+            <span class="c"># will *not* work!</span>
+            <span class="k">for</span> <span class="n">vmid</span><span class="p">,</span> <span class="n">vm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vms</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">READY</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_vm_be_stopped</span><span class="p">(</span><span class="n">vm</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vm</span><span class="o">.</span><span class="n">jobs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="s">&quot;Request to stop VM </span><span class="si">%s</span><span class="s">, but it&#39;s still running jobs: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                            <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">,</span> <span class="nb">str</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">jobs</span><span class="p">))</span>
+                    <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">STOPPING</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_async</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_do_stop_vm</span><span class="p">,</span> <span class="p">[</span><span class="n">vm</span><span class="p">])</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">after</span><span class="p">()</span>
-
-            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">cycle</span> <span class="o">+=</span><span class="mi">1</span>
+            <span class="n">done</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">last_cycle_at</span> <span class="o">=</span> <span class="n">now</span>
+            
+            <span class="k">if</span> <span class="n">delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">t1</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="c"># need real time, not the simulated one</span>
+                <span class="n">elapsed</span> <span class="o">=</span> <span class="n">t1</span> <span class="o">-</span> <span class="n">t0</span>
+                <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;</span> <span class="n">delay</span><span class="p">:</span>
+                    <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Cycle </span><span class="si">%d</span><span class="s"> took more than </span><span class="si">%.2f</span><span class="s"> seconds!&quot;</span>
+                                <span class="s">&quot; Starting new cycle without delay.&quot;</span>
+                                <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cycle</span><span class="p">,</span> <span class="n">delay</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span> <span class="o">-</span> <span class="n">elapsed</span><span class="p">)</span>
 </div>
+    <span class="k">def</span> <span class="nf">_do_start_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vms</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Starting VM </span><span class="si">%s</span><span class="s"> ...&quot;</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">start_vm</span><span class="p">(</span><span class="n">vm</span><span class="p">)</span>
+            <span class="n">vm</span><span class="o">.</span><span class="n">started_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">vms</span><span class="p">[</span><span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">]</span> <span class="o">=</span> <span class="n">vm</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pending_auth</span><span class="p">[</span><span class="n">vm</span><span class="o">.</span><span class="n">auth</span><span class="p">]</span> <span class="o">=</span> <span class="n">vm</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;VM </span><span class="si">%s</span><span class="s"> started, waiting for &#39;READY&#39; notification.&quot;</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">DOWN</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Error launching VM </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                      <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">),</span> <span class="n">exc_info</span><span class="o">=</span><span class="n">__debug__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_do_stop_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm</span><span class="p">):</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Stopping VM </span><span class="si">%s</span><span class="s"> ...&quot;</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cloud</span><span class="o">.</span><span class="n">stop_vm</span><span class="p">(</span><span class="n">vm</span><span class="p">)</span>
+            <span class="n">vm</span><span class="o">.</span><span class="n">stopped_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">DOWN</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">been_running</span> <span class="o">=</span> <span class="p">(</span><span class="n">vm</span><span class="o">.</span><span class="n">stopped_at</span> <span class="o">-</span> <span class="n">vm</span><span class="o">.</span><span class="n">ready_at</span><span class="p">)</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Stopped VM </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">);&quot;</span>
+                         <span class="s">&quot; it has run for </span><span class="si">%d</span><span class="s"> seconds, been idle for </span><span class="si">%d</span><span class="s"> of them (</span><span class="si">%.2f%%</span><span class="s">)&quot;</span><span class="p">,</span>
+                         <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">nodename</span><span class="p">,</span> <span class="n">been_running</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">total_idle</span><span class="p">,</span>
+                         <span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="n">vm</span><span class="o">.</span><span class="n">total_idle</span> <span class="o">/</span> <span class="n">been_running</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="c"># if the machine was never ready, `.nodename` and `.ready_at` are unset</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Stopped VM </span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">); it never reached READY status.&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="c"># XXX: This is more delicate than catching errors in the</span>
+            <span class="c"># startup phase: if a VM was not stopped when it should</span>
+            <span class="c"># have been, we run the chance of being billed from the</span>
+            <span class="c"># cloud provider for services we do not use any longer.</span>
+            <span class="c"># What&#39;s the correct course of action?</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Error stopping VM </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                      <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">),</span> <span class="n">exc_info</span><span class="o">=</span><span class="n">__debug__</span><span class="p">)</span>
+            
+
 <div class="viewcode-block" id="Orchestrator.before"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.before">[docs]</a>    <span class="k">def</span> <span class="nf">before</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Hook called at the start of the main run() cycle.&quot;&quot;&quot;</span>
         <span class="k">pass</span>
@@ -303,30 +479,93 @@
         <span class="k">pass</span>
 
 </div>
-    <span class="k">def</span> <span class="nf">update_job_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">jobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sched_info</span><span class="p">()</span>
-
-        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="p">(</span><span class="n">j</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">jobs</span> <span class="k">if</span> <span class="n">j</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">JobInfo</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">):</span>
-            <span class="c"># running jobs are no longer candidates</span>
-            <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">jobid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">:</span>
-                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">]</span>
-
-        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="p">(</span><span class="n">j</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">jobs</span> <span class="k">if</span> <span class="n">j</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">JobInfo</span><span class="o">.</span><span class="n">PENDING</span><span class="p">):</span>
-            <span class="c"># update candidates&#39; information</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_cloud_candidate</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">]</span> <span class="o">=</span> <span class="n">job</span>
-
-
-    <span class="c">##</span>
-    <span class="c">## interface to the batch queue scheduler</span>
-    <span class="c">##</span>
-    <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="Orchestrator.get_sched_info"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.get_sched_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_sched_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Orchestrator.time"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.time">[docs]</a>    <span class="k">def</span> <span class="nf">time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Query the job scheduler and return a list of `JobInfo` objects</span>
-<span class="sd">        representing the jobs in the batch queue system.</span>
+<span class="sd">        Return the current time in UNIX epoch format.</span>
+
+<span class="sd">        This method exists only for the purpose of overriding it</span>
+<span class="sd">        insimulator classes, so that a &#39;virtual&#39; time can be</span>
+<span class="sd">        implemented.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="Orchestrator.update_job_status"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.update_job_status">[docs]</a>    <span class="k">def</span> <span class="nf">update_job_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update job information based on what the batch system interface returns.</span>
+
+<span class="sd">        Return the full list of active job objects (i.e., not just the</span>
+<span class="sd">        candidates for cloud execution).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchsys</span><span class="o">.</span><span class="n">get_sched_info</span><span class="p">()</span>    
+        
+        <span class="c"># remove finished jobs</span>
+        <span class="n">jobids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span> <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">)</span>
+        <span class="n">active_vms</span> <span class="o">=</span> <span class="p">[</span> <span class="n">vm</span> <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vms</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                       <span class="k">if</span> <span class="p">(</span><span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">READY</span><span class="p">,</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">DRAINING</span> <span class="p">])</span> <span class="p">]</span>
+        <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="n">active_vms</span><span class="p">:</span>
+            <span class="c"># remove jobs that are no longer in the list, i.e., they are finished</span>
+            <span class="n">terminated</span> <span class="o">=</span> <span class="p">(</span><span class="n">vm</span><span class="o">.</span><span class="n">jobs</span> <span class="o">-</span> <span class="n">jobids</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">jobid</span> <span class="ow">in</span> <span class="n">terminated</span><span class="p">:</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Job </span><span class="si">%s</span><span class="s"> terminated its execution on node &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span><span class="p">,</span>
+                         <span class="n">jobid</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">nodename</span><span class="p">)</span>
+            <span class="n">vm</span><span class="o">.</span><span class="n">jobs</span> <span class="o">-=</span> <span class="n">terminated</span>
+
+        <span class="c"># update info on running jobs</span>
+        <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">JobInfo</span><span class="o">.</span><span class="n">RUNNING</span> <span class="ow">and</span> <span class="n">job</span><span class="o">.</span><span class="n">running_at</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update</span><span class="p">:</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Job </span><span class="si">%s</span><span class="s"> running on node &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span><span class="p">,</span> <span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">,</span> <span class="n">job</span><span class="o">.</span><span class="n">exec_node_name</span><span class="p">)</span>
+                <span class="c"># job just went running, it&#39;s longer a candidate</span>
+                <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">jobid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">]</span>
+                <span class="c"># record which jobs are running on which VM</span>
+                <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">exec_node_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vms_by_nodename</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_vms_by_nodename</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">exec_node_name</span><span class="p">]</span><span class="o">.</span><span class="n">jobs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">job</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">JobInfo</span><span class="o">.</span><span class="n">PENDING</span> <span class="ow">and</span> <span class="n">job</span><span class="o">.</span><span class="n">submitted_at</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update</span><span class="p">:</span>
+                <span class="c"># update candidates&#39; information</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_cloud_candidate</span><span class="p">(</span><span class="n">job</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">candidates</span><span class="p">[</span><span class="n">job</span><span class="o">.</span><span class="n">jobid</span><span class="p">]</span> <span class="o">=</span> <span class="n">job</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c"># ignore</span>
+                <span class="k">pass</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_update</span> <span class="o">=</span> <span class="n">now</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span>
+    
+</div>
+<div class="viewcode-block" id="Orchestrator.vm_is_ready"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.vm_is_ready">[docs]</a>    <span class="k">def</span> <span class="nf">vm_is_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auth</span><span class="p">,</span> <span class="n">nodename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Notify an `Orchestrator` instance that a VM is ready to accept jobs.</span>
+
+<span class="sd">        The `auth` argument must match one of the passwords assigned</span>
+<span class="sd">        to a previously-started VM (which are passed to the VM via</span>
+<span class="sd">        boot parameters).  If it does not, an error is logged and the</span>
+<span class="sd">        call immediately returns `False`.</span>
+
+<span class="sd">        The `nodename` argument must be the host name that the VM</span>
+<span class="sd">        reports to the batch system, i.e., the node name as it appears</span>
+<span class="sd">        in the batch system scheduler listings/config. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">auth</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_auth</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="s">&quot;Received notification that node &#39;</span><span class="si">%s</span><span class="s">&#39; is READY,&quot;</span>
+                <span class="s">&quot; but authentication data does not match any started VM.  Ignoring.&quot;</span><span class="p">,</span>
+                <span class="n">nodename</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">vm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_auth</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">STARTING</span>
+        <span class="n">vm</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">VmInfo</span><span class="o">.</span><span class="n">READY</span>
+        <span class="n">vm</span><span class="o">.</span><span class="n">ready_at</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">vm</span><span class="o">.</span><span class="n">nodename</span> <span class="o">=</span> <span class="n">nodename</span>
+        <span class="k">if</span> <span class="n">nodename</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vms_by_nodename</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s">&quot;Node name &#39;</span><span class="si">%s</span><span class="s">&#39; already registered to VM </span><span class="si">%s</span><span class="s">,&quot;</span>
+                <span class="s">&quot; but re-registering to VM </span><span class="si">%s</span><span class="s">.&quot;</span><span class="p">,</span>
+                <span class="n">nodename</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vms_by_nodename</span><span class="p">[</span><span class="n">nodename</span><span class="p">]</span><span class="o">.</span><span class="n">vmid</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vms_by_nodename</span><span class="p">[</span><span class="n">nodename</span><span class="p">]</span> <span class="o">=</span> <span class="n">vm</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;VM </span><span class="si">%s</span><span class="s"> reports being ready as node &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span><span class="p">,</span> <span class="n">vm</span><span class="o">.</span><span class="n">vmid</span><span class="p">,</span> <span class="n">nodename</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
 
 
     <span class="c">##</span>
@@ -334,7 +573,8 @@
     <span class="c">##</span></div>
     <span class="nd">@abstractmethod</span>
 <div class="viewcode-block" id="Orchestrator.is_cloud_candidate"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.is_cloud_candidate">[docs]</a>    <span class="k">def</span> <span class="nf">is_cloud_candidate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return `True` if `job` can be run in a cloud node.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return `True` if `job` can be run in a cloud node.</span>
 
 <span class="sd">        Override in subclasses to define a different cloud-burst</span>
 <span class="sd">        policy.</span>
@@ -350,7 +590,8 @@
 </div>
     <span class="nd">@abstractmethod</span>
 <div class="viewcode-block" id="Orchestrator.can_vm_be_stopped"><a class="viewcode-back" href="../api.html#orchestrator.Orchestrator.can_vm_be_stopped">[docs]</a>    <span class="k">def</span> <span class="nf">can_vm_be_stopped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return `True` if the VM identified by `vm` is no longer</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return `True` if the VM identified by `vm` is no longer</span>
 <span class="sd">        needed and can be stopped.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
