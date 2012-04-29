@@ -49,3 +49,16 @@ File format: CSV
 We widely use the CSV as file referencing format. Bellow the different
 use cases where the format has been used. 
 
+.. References
+
+.. _subversion: http://subversion.tigris.org/
+.. _sphinx: http://sphinx.pocoo.org/
+.. _virtualenv: http://pypi.python.org/pypi/virtualenv/1.5.1
+
+
+.. (for Emacs only)
+..
+  Local variables:
+  mode: rst
+  End:
+
