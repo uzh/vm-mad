@@ -1,0 +1,51 @@
+++++++++++++++++++++
+ Commands in VM-MAD
+++++++++++++++++++++
+
+:Author:   Tyanko Aleksiev <tyanko.alexiev@gmail.com>
+:Date:     2012-04-29
+:Revision: $Revision$
+
+
+.. This file follows reStructuredText markup syntax; see
+   http://docutils.sf.net/rst.html for more information
+
+
+Commands
+========
+
+These instructions refer to the different commands inside VM-MAD and
+to how do they interact among them. A basic description of what must be
+the format of the various files is also given. 
+
+Simulation
+==========
+
+This section treats the simulation part of VM-MAD. 
+
+    * Before starting the simulation a distiled accounting data has to be available. 
+    The distil.py tool has been provided for automating this part. 
+    * Once the accounting data is available a simulation can be started using the simul.py
+    tool. 
+
+In the next subsections more detailed information about these tools will be provided.
+
+1. Distil 
+The purpose of this tool is to distill different kind of scheduling information, more precisely:
+
+    *  the accounting data provided by SGE,
+    *  the output given by querying with the ``qstat -xml`` command the SGE scheduler. 
+
+You can see all the options provided by simply doing ``./distil.py -h`` 
+The output produced by ``distil.py`` is in CSV format. 
+
+2. Simulate 
+
+TO BE DONE
+
+File format: CSV
+================
+
+We widely use the CSV as file referencing format. Bellow the different
+use cases where the format has been used. 
+

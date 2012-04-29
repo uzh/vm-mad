@@ -1,0 +1,159 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Commands in VM-MAD &mdash; VM-MAD vdevelopment (SVN $Revision$) documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     'development (SVN $Revision$)',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="VM-MAD vdevelopment (SVN $Revision$) documentation" href="index.html" />
+    <link rel="prev" title="VM-MAD modules" href="api.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="api.html" title="VM-MAD modules"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="commands-in-vm-mad">
+<h1>Commands in VM-MAD<a class="headerlink" href="#commands-in-vm-mad" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Author:</th><td class="field-body">Tyanko Aleksiev &lt;<a class="reference external" href="mailto:tyanko&#46;alexiev&#37;&#52;&#48;gmail&#46;com">tyanko<span>&#46;</span>alexiev<span>&#64;</span>gmail<span>&#46;</span>com</a>&gt;</td>
+</tr>
+<tr class="field"><th class="field-name">Date:</th><td class="field-body">2012-04-29</td>
+</tr>
+<tr class="field"><th class="field-name">Revision:</th><td class="field-body">$Revision$</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="commands">
+<h2>Commands<a class="headerlink" href="#commands" title="Permalink to this headline">¶</a></h2>
+<p>These instructions refer to the different commands inside VM-MAD and
+to how do they interact among them. A basic description of what must be
+the format of the various files is also given.</p>
+</div>
+<div class="section" id="simulation">
+<h2>Simulation<a class="headerlink" href="#simulation" title="Permalink to this headline">¶</a></h2>
+<p>This section treats the simulation part of VM-MAD.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Before starting the simulation a distiled accounting data has to be available.</li>
+</ul>
+<p>The distil.py tool has been provided for automating this part.
+* Once the accounting data is available a simulation can be started using the simul.py
+tool.</p>
+</div></blockquote>
+<p>In the next subsections more detailed information about these tools will be provided.</p>
+<p>1. Distil
+The purpose of this tool is to distill different kind of scheduling information, more precisely:</p>
+<blockquote>
+<div><ul class="simple">
+<li>the accounting data provided by SGE,</li>
+<li>the output given by querying with the <tt class="docutils literal"><span class="pre">qstat</span> <span class="pre">-xml</span></tt> command the SGE scheduler.</li>
+</ul>
+</div></blockquote>
+<p>You can see all the options provided by simply doing <tt class="docutils literal"><span class="pre">./distil.py</span> <span class="pre">-h</span></tt>
+The output produced by <tt class="docutils literal"><span class="pre">distil.py</span></tt> is in CSV format.</p>
+<ol class="arabic simple" start="2">
+<li>Simulate</li>
+</ol>
+<p>TO BE DONE</p>
+</div>
+<div class="section" id="file-format-csv">
+<h2>File format: CSV<a class="headerlink" href="#file-format-csv" title="Permalink to this headline">¶</a></h2>
+<p>We widely use the CSV as file referencing format. Bellow the different
+use cases where the format has been used.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Commands in VM-MAD</a><ul>
+<li><a class="reference internal" href="#commands">Commands</a></li>
+<li><a class="reference internal" href="#simulation">Simulation</a></li>
+<li><a class="reference internal" href="#file-format-csv">File format: CSV</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="api.html"
+                        title="previous chapter">VM-MAD modules</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/commands.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="api.html" title="VM-MAD modules"
+             >previous</a> |</li>
+        <li><a href="index.html">VM-MAD vdevelopment (SVN $Revision$) documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Simon Barkow, Peter Kunszt, Sergio Maffioletti, Riccardo Murri, Christian Panse.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
