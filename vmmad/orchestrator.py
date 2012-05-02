@@ -245,8 +245,9 @@ class Orchestrator(object):
     :param int threads:   Size of the thread pool for non-blocking operations.
     """
 
-    def __init__(self, cloud, batchsys,
-                 max_vms, max_delta=1, vm_start_timeout=10*60,
+    def __init__(self, cloud, batchsys, max_vms,
+                 max_delta=1,
+                 vm_start_timeout=10*60, # 10 minutes
                  threads=8):
         # thread pool to enqueue blocking operations
         self._threadpool = mp.Pool(threads)
@@ -273,9 +274,9 @@ class Orchestrator(object):
         self._vms_by_nodename = { }
         
         # mapping jobid to job informations
-        self.jobs = [ ]
-        self.candidates = { }
-
+        self.jobs = { }
+        self.candidates = set()
+        
         # VM book-keeping
         self._vmid = 0
         
@@ -286,7 +287,7 @@ class Orchestrator(object):
         self.last_update = 0
 
         # if a VM does not turn to READY state within this time allowance, cancel it
-        self.vm_start_timeout = 10*60 # 10 minutes
+        self.vm_start_timeout = vm_start_timeout
 
 
     def run(self, delay=30, max_cycles=0):
@@ -332,23 +333,7 @@ class Orchestrator(object):
             # start new VMs if needed
             for _ in xrange(self.max_delta):
                 if self.is_new_vm_needed() and len(self.vms) < self.max_vms:
-                    # new VMID
-                    self._vmid += 1
-                    # generate a random auth token and ensure it's not in use
-                    passwd = random_password()
-                    while passwd in self._pending_auth:
-                        passwd = random_password()
-                    # bundle up all this into a VM object
-                    new_vm = VmInfo(
-                        vmid=str(self._vmid),
-                        state=VmInfo.STARTING,
-                        auth=passwd,
-                        total_idle=0,
-                        last_idle=0,
-                        running_time=0,
-                        )
-                    # start it!
-                    self._async(self._do_start_vm, [new_vm])
+                    self._async(self._do_start_vm, [self.new_vm()])
                 else:
                     break # no VM needed or limit reached, exit loop
 
@@ -404,13 +389,16 @@ class Orchestrator(object):
             vm.state = VmInfo.DOWN
             try:
                 been_running = (vm.stopped_at - vm.ready_at)
-                log.info("Stopped VM %s (%s);"
-                         " it has run for %d seconds, been idle for %d of them (%.2f%%)",
-                         vm.vmid, vm.nodename, been_running, vm.total_idle,
-                         (100.0 * vm.total_idle / been_running))
+                if been_running > 0:
+                    log.info("Stopped VM %s (%s);"
+                             " it has run for %d seconds, been idle for %d of them (%.2f%%)",
+                             vm.vmid, vm.nodename, been_running, vm.total_idle,
+                             (100.0 * vm.total_idle / been_running))
+                else:
+                    log.error("Stopped VM %s (%s), but has been running 0 seconds!", vm.vmid, vm.nodename)
             except AttributeError:
                 # if the machine was never ready, `.nodename` and `.ready_at` are unset
-                log.warning("Stopped VM %s (%s); it never reached READY status.")
+                log.warning("Stopped VM %s; it never reached READY status.", vm.vmid)
         except Exception, ex:
             # XXX: This is more delicate than catching errors in the
             # startup phase: if a VM was not stopped when it should
@@ -442,6 +430,33 @@ class Orchestrator(object):
         return time.time()
 
 
+    def new_vm(self, **attrs):
+        """
+        Return a new `VmInfo` object.
+
+        If you need to set attributes on the `VmInfo` object before
+        the VM is even started, override this method in a subclass,
+        take its return value and manipualte it at will.
+        """
+        # new VMID
+        if 'vmid' not in attrs:
+            self._vmid += 1
+            attrs['vmid'] = str(self._vmid)
+        # generate a random auth token and ensure it's not in use
+        if 'auth' not in attrs:
+            passwd = random_password()
+            while passwd in self._pending_auth:
+                passwd = random_password()
+            attrs['auth'] = passwd
+        # set standard attributes
+        attrs.setdefault('state', VmInfo.STARTING)
+        attrs.setdefault('total_idle', 0)
+        attrs.setdefault('last_idle', 0)
+        attrs.setdefault('running_time', 0)
+        # bundle up all this into a VM object
+        return VmInfo(**attrs)
+
+
     def update_job_status(self):
         """
         Update job information based on what the batch system interface returns.
@@ -449,35 +464,60 @@ class Orchestrator(object):
         Return the full list of active job objects (i.e., not just the
         candidates for cloud execution).
         """
+        log.debug("Updating job status; last update at %s", self.last_update)
         now = self.time()
-        self.jobs = self.batchsys.get_sched_info()    
+
+        current_jobs = self.batchsys.get_sched_info()    
+        for job in current_jobs:
+            jobid = job.jobid
+            if jobid in self.jobs:
+                self.jobs[jobid].update(job)
+            else:
+                self.jobs[jobid] = job
+                log.info("New job %s %s in state %s appeared; submitted at %s.", jobid,
+                         (("'%s'" % job.name) if 'name' in job else '(no job name)'),
+                         job.state, job.submitted_at)
+                assert job.submitted_at >= self.last_update
         
         # remove finished jobs
-        jobids = set(job.jobid for job in self.jobs)
+        jobids = set(self.jobs.iterkeys())
+        current_jobids = set(job.jobid for job in current_jobs)
+        terminated = jobids - current_jobids
+        for jobid in terminated:
+            job = self.jobs[jobid]
+            if job.state == JobInfo.RUNNING:
+                assert 'exec_node_name' in job
+                log.info("Job %s terminated its execution on node '%s'",
+                         jobid, self.jobs[jobid].exec_node_name)
+            else:
+                assert 'exec_node_name' not in job, (
+                    "Error in job object '%s': expecting 'exec_node_name' not to be there!",
+                    str.join(', ', [ ("%s=%r" % (k,v)) for k,v in job.items() ]))
+                log.info("Job %s was cancelled.", jobid)
+            if job in self.candidates:
+                self.candidates.remove(job)
+            del self.jobs[jobid]
         active_vms = [ vm for vm in self.vms.values()
                        if (vm.state in [ VmInfo.READY, VmInfo.DRAINING ]) ]
         for vm in active_vms:
             # remove jobs that are no longer in the list, i.e., they are finished
-            terminated = (vm.jobs - jobids)
-            for jobid in terminated:
-                log.info("Job %s terminated its execution on node '%s'",
-                         jobid, vm.nodename)
             vm.jobs -= terminated
 
         # update info on running jobs
-        for job in self.jobs:
+        for job in self.jobs.values():
             if job.state == JobInfo.RUNNING and job.running_at > self.last_update:
                 log.debug("Job %s running on node '%s'", job.jobid, job.exec_node_name)
                 # job just went running, it's longer a candidate
-                if job.jobid in self.candidates:
-                    del self.candidates[job.jobid]
+                if job in self.candidates:
+                    self.candidates.remove(job)
                 # record which jobs are running on which VM
                 if job.exec_node_name in self._vms_by_nodename:
                     self._vms_by_nodename[job.exec_node_name].jobs.add(job.jobid)
             elif job.state == JobInfo.PENDING and job.submitted_at > self.last_update:
                 # update candidates' information
                 if self.is_cloud_candidate(job):
-                    self.candidates[job.jobid] = job
+                    assert job not in self.candidates
+                    self.candidates.add(job)
             else:
                 # ignore
                 pass

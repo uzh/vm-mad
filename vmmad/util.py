@@ -35,7 +35,7 @@ import string
 
 
 def random_password(length=24, letters=(string.ascii_letters + string.digits)):
-  return str.join('', [random.choice(letters) for _ in xrange(length)])
+    return str.join('', [random.choice(letters) for _ in xrange(length)])
 
 
 class Struct(Mapping):
@@ -93,3 +93,16 @@ class Struct(Mapping):
 
     def keys(self):
         return self.__dict__.keys()
+
+    def update(self, E, **F):
+        """
+        Exactly like the `dict.update` method (which see).
+        """
+        try:
+            for k in E.keys():
+                self[k] = E[k]
+        except AttributeError, TypeError:
+            for k,v in E:
+               self[k] = v
+        for k in F:
+            self[k] = F[k]

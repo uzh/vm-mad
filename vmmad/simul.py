@@ -59,13 +59,23 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             self,
             cloud=self,
             batchsys=JobsFromFile(csv_file, self.time, start_time),
-            max_vms=(max_vms+cluster_size),
-            max_delta=max_delta)
+            max_vms=max_vms,
+            max_delta=max_delta,
+            vm_start_timeout=time_interval*max(startup_delay, 10))
+
+        # make cluster nodes already available at start
+        for n in xrange(cluster_size):
+            # NOTE: use `Orchestrator.new_vm` here, as `self.new_vm` creates a *real VM*
+            nodeid = ('clusternode-%d' % n)
+            node = Orchestrator.new_vm(self,
+                                       vmid=nodeid,
+                                       state=VmInfo.READY,
+                                       nodename=nodeid,
+                                       ever_running=True)
 
         # Set simulation settings
         self.max_idle = max_idle
         self.startup_delay = startup_delay
-        self.cluster_size = cluster_size
 
         self.output_file = open(output_file, "wb") 
         self.writer = csv.writer(self.output_file, delimiter=',')
@@ -78,9 +88,8 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         # info about running VMs
         self._vmid = 0 
 
-        # no jobs are running at the onset, all are pending
-        self._running = [ ]
-        self._pending = [ ]
+        # no running jobs at the onset
+        self._running = 0
 
         # if `starting_time` has not been set, then use earliest job
         # submission time as starting point
@@ -92,54 +101,60 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     def update_job_status(self):
         # do regular work       
         Orchestrator.update_job_status(self)
-        self._pending = [ job for job in self.batchsys.jobs if job.state == JobInfo.PENDING ]
-        self._running = [ job for job in self.batchsys.jobs if job.state == JobInfo.RUNNING ]
+
+        # count running jobs
+        self._running = len([ job for job in self.jobs.itervalues()
+                              if job.state == JobInfo.RUNNING ])
 
         # simulate 'ready' notification from VMs
         starting_vms = [ vm for vm in self.vms.values() if vm.state == VmInfo.STARTING ]
         for vm in starting_vms:
-            if vm.ever_running:
-                nodename = ("clusternode-%s" % vm.vmid)
+            # we use `vm.last_idle` as a countdown to the `READY` state for VMs:
+            # it is initialized to `-startup_delay` and incremented at every pass
+            if vm.last_idle >= 0:
+                nodename = ("vm-%s" % vm.vmid)
                 self.vm_is_ready(vm.auth, nodename)
             else:
-                # we use `vm.last_idle` as a countdown to the `READY` state for VMs:
-                # it is initialized to `-startup_delay` and incremented at every pass
-                if vm.last_idle >= 0:
-                    nodename = ("vm-%s" % (int(vm.vmid) - self.cluster_size))
-                    self.vm_is_ready(vm.auth, nodename)
-                else:
-                    vm.last_idle += 1
+                vm.last_idle += 1
 
         # simulate SGE scheduler starting a new job
         ready_vms = [ vm for vm in self.vms.values() if vm.state == VmInfo.READY ]
         for vm in ready_vms:
             if not vm.jobs:
-                if not self._pending:
+                if not self.candidates:
                     break
-                job = self._pending.pop()
+                job = self.candidates.pop()
+                job.state = JobInfo.RUNNING
                 job.exec_node_name = vm.nodename
                 job.running_at = self.time()
-                self._running.append(job)
+                self._running += 1
                 vm.jobs.add(job.jobid)
-                log.info("Job %s just started running on VM %s (%s).",
+                log.info("Job %s just started running on node %s (%s).",
                          job.jobid, vm.vmid, vm.nodename)
 
 
     def before(self):
         # XXX: this only works with `JobsFromFile`!
-        if len(self._running) == 0 and len(self.batchsys.jobs) == 0 and len(self.batchsys.future_jobs) == 0:
+        if len(self.jobs) == 0 and len(self.batchsys.future_jobs) == 0:
             log.info("No more jobs, stopping here")
             self.output_file.close()
             sys.exit(0)        
-    
-        _idle_vm_count = len([ vm for vm in self.vms.values()
-                               if vm.last_idle > 0 and not vm.ever_running ])
-        self.writer.writerow(
-            #  timestamp,         pending jobs,       running jobs,            started VMs,            idle VMs,
-            [self.time(),         len(self._pending), len(self._running),      len(self.vms), _idle_vm_count])
 
-        log.info("At time %d: pending jobs %d, running jobs %d, started VMs %d, idle VMs %d",
-                 self.time(), len(self._pending), len(self._running), len(self.vms), _idle_vm_count)
+        vms = [ vm for vm in self.vms.values() if not vm.ever_running ]
+        vm_count = len(vms)
+        starting_vm_count = len([ vm for vm in vms if vm.state == VmInfo.STARTING ])
+        ready_vms_count = len([ vm for vm in vms if vm.state == VmInfo.READY ])
+        stopping_vms_count = len([ vm for vm in vms if vm.state == VmInfo.STOPPING ])
+        idle_vm_count = len([ vm for vm in vms if vm.last_idle > 0 ])
+        self.writer.writerow(
+            #  timestamp,  pending jobs,          running jobs,   started VMs,    idle VMs,
+            [self.time(),  len(self.candidates),  self._running,  len(self.vms),  idle_vm_count])
+
+        log.info(
+            "At time %d: pending jobs %d, running jobs %d, total started VMs %d,"
+            " starting VMs %d, ready VMs %d, idle VMs %d, stopping VMs %d",
+            self.time(), len(self.candidates), self._running, len(self.vms),
+            starting_vm_count, ready_vms_count, idle_vm_count, stopping_vms_count)
 
 
     def time(self):
@@ -149,6 +164,10 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         return self.starting_time + self.cycle * self.time_interval
 
 
+    def new_vm(self, **attrs):
+        return Orchestrator.new_vm(self, ever_running=False, last_idle=-self.startup_delay)
+    
+
     ##
     ## policy implementation interface
     ##
@@ -157,7 +176,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         return True
 
     def is_new_vm_needed(self):
-        if len(self._pending) > 2 * len(self._running):
+        if len(self.candidates) > 2 * len(self.vms):
             return True
 
     def can_vm_be_stopped(self, vm):
@@ -173,13 +192,6 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
     def start_vm(self, vm):
         DummyCloud.start_vm(self, vm)
-
-        # Setting the first "cluster_size" machines to be ever_running. 
-        if int(vm.vmid) <= self.cluster_size:
-            vm.ever_running = True 
-        else:
-            vm.ever_running = False 
-            vm.last_idle = -self.startup_delay
 
     def update_vm_status(self, vms):
         DummyCloud.update_vm_status(self, vms)
