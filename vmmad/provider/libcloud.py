@@ -211,8 +211,22 @@ class EC2Cloud(CloudNodeProvider):
     def update_vm_status(self, vms):
         nodes = self.provider.list_nodes(ex_node_ids=[vm.instance.id for vm in vms])
         for node in nodes:
-            vm = self._instance_to_vm_map[node.uuid]
-            vm.instance = node
-            state = self._vminfo_state_from_libcloud_status(node.state)
-            if state is not None:
-                vm.state = state
+            if node.uuid in self._instance_to_vm_map:
+                vm = self._instance_to_vm_map[node.uuid]
+                vm.instance = node
+                state = self._vminfo_state_from_libcloud_status(node.state)
+                if state is not None:
+                    vm.state = state
+            else:
+                # Ignore VMs that were not started by us.  There are
+                # two reasons for this policy:
+                #
+                #   - the same AWS account could be used for other purposes
+                #     or `Orchestrator` instances, so we should not assume that
+                #     all VMs are under our control.
+                #
+                #   - the AWS interface keeps reporting *terminated* instances
+                #     for some time after they have been shut down.
+                #
+                log.debug("Ignoring VM '%s', which was not started by this orchestrator.",
+                          node.uuid)
