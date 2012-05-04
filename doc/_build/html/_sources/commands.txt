@@ -21,8 +21,7 @@ References to input/output files' format is also being provided.
 Simulation
 ==========
 
-VM-MAD has an integrated simulation suite which enables processing SGE accounting data. The main idea 
-which stays behind the development of this part of VM-MAD could be probably better associated with the answer of the following question: 
+VM-MAD has an integrated simulation suite which enables processing SGE accounting data. The main idea of this implemetation can be associated with the answer of the question: 
 "What would be the evolution of my cluster's queue during the time if I had on my disposal X always running servers and the possibility to
 spawn Y Virtual Machines on demand?". Where X and Y are variables that can be chosen by the final user. The simulation process involves three
 different parts:
@@ -35,11 +34,10 @@ different parts:
 
     * finally the plot_workload.R R script is used for graphically represent the results. 
 
-The simulation is executed from the simul.py script. In order to run properly the scipt needs 
-the output produced by the distil.py tool. For more information about the file format see 
-the :ref:`distoutput` section.
+The output produced by the distil.py tool is needed before starting a new simulation. The :ref:`distoutput` section
+describes in more detail what kind of information the distill tool is providing to the simulator suite. 
 
-The simulation can be set-up using the provided options::
+A new simulation can be set-up by using the provided options, to see all of them::
 
     (vm-mad)vm-user@test:~ ./simul.py --help
     usage: simul.py [-h] [--max-vms N] [--max-delta N] [--max-idle NUM_SECS]
@@ -75,17 +73,17 @@ The simulation can be set-up using the provided options::
                         the jobs in the CSV file, default: 3600
     --version, -V         show program's version number and exit
 
-The ``--max-vms`` and ``--cluster-size`` options are probably the most important as they permits you 
-to simulate different configuration scenarios. The ``--max-vms`` allows you to choose how exandable,
-in terms of VMs, your cluster could be.  On the other hand the ``--cluster-size`` represents the fixed 
-dimension of your cluster.
+The ``--max-vms`` and ``--cluster-size`` options are probably the most important as they permit you 
+to simulate different configuration scenarios. The ``--max-vms`` allows you to set how expandable,
+in terms of VMs, your cluster could be. The ``--cluster-size`` options permits you to fix the simulated 
+dimension of your locally availbale cluster.
 
-Once the simulation is complited you can graphically visualize the results using the plot_workload.R script 
-by simply executing::
+Once the simulation is completed you can compute the results using the plot_workload.R script::
 
     (vm-mad)vm-user@test:~ ./plot_workload.R simulation_output_file output_file 
 
-At the end you should find two files: output_file.pdf and output_file.esp containing the results. 
+Two files are produced at the end: output_file.pdf and output_file.eps. They represent what would be the graphical
+evolution of your queue with the specified options. 
 
 
 .. _distill:
@@ -97,9 +95,9 @@ an output in CSV format legible from the simulator suite. The following data inp
 recognized by the tool:
 
     *  accounting data provided by SGE,
-    *  the output given by querying the SGE scheduler with the ``qstat -xml`` command. (to be tested)
+    *  the output given by querying the SGE scheduler with the ``qstat -xml`` command. (working in progress)
 
-You can see all the options provided by simply doing ``./distil.py -h`` 
+You can see all the provided options by simply doing ``./distil.py -h`` 
 
 .. _distoutput:
 
@@ -118,8 +116,6 @@ The output produced by the distil.py is in the CSV format tool has the following
 
 The first row of the file is quite self-explaining about what kind of information, each of the columns, is containing.
  
-
-
 .. References
 
 .. _subversion: http://subversion.tigris.org/

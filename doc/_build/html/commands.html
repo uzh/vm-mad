@@ -69,8 +69,7 @@ References to input/output files&#8217; format is also being provided.</p>
 </div>
 <div class="section" id="simulation">
 <h2>Simulation<a class="headerlink" href="#simulation" title="Permalink to this headline">¶</a></h2>
-<p>VM-MAD has an integrated simulation suite which enables processing SGE accounting data. The main idea
-which stays behind the development of this part of VM-MAD could be probably better associated with the answer of the following question:
+<p>VM-MAD has an integrated simulation suite which enables processing SGE accounting data. The main idea of this implemetation can be associated with the answer of the question:
 &#8220;What would be the evolution of my cluster&#8217;s queue during the time if I had on my disposal X always running servers and the possibility to
 spawn Y Virtual Machines on demand?&#8221;. Where X and Y are variables that can be chosen by the final user. The simulation process involves three
 different parts:</p>
@@ -81,10 +80,9 @@ different parts:</p>
 <li>finally the plot_workload.R R script is used for graphically represent the results.</li>
 </ul>
 </div></blockquote>
-<p>The simulation is executed from the simul.py script. In order to run properly the scipt needs
-the output produced by the distil.py tool. For more information about the file format see
-the <a class="reference internal" href="#distoutput"><em>Distill Output</em></a> section.</p>
-<p>The simulation can be set-up using the provided options:</p>
+<p>The output produced by the distil.py tool is needed before starting a new simulation. The <a class="reference internal" href="#distoutput"><em>Distill Output</em></a> section
+describes in more detail what kind of information the distill tool is providing to the simulator suite.</p>
+<p>A new simulation can be set-up by using the provided options, to see all of them:</p>
 <div class="highlight-python"><pre>(vm-mad)vm-user@test:~ ./simul.py --help
 usage: simul.py [-h] [--max-vms N] [--max-delta N] [--max-idle NUM_SECS]
             [--startup-delay NUM_SECS] [--csv-file String]
@@ -119,15 +117,15 @@ optional arguments:
                     the jobs in the CSV file, default: 3600
 --version, -V         show program's version number and exit</pre>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">--max-vms</span></tt> and <tt class="docutils literal"><span class="pre">--cluster-size</span></tt> options are probably the most important as they permits you
-to simulate different configuration scenarios. The <tt class="docutils literal"><span class="pre">--max-vms</span></tt> allows you to choose how exandable,
-in terms of VMs, your cluster could be.  On the other hand the <tt class="docutils literal"><span class="pre">--cluster-size</span></tt> represents the fixed
-dimension of your cluster.</p>
-<p>Once the simulation is complited you can graphically visualize the results using the plot_workload.R script
-by simply executing:</p>
+<p>The <tt class="docutils literal"><span class="pre">--max-vms</span></tt> and <tt class="docutils literal"><span class="pre">--cluster-size</span></tt> options are probably the most important as they permit you
+to simulate different configuration scenarios. The <tt class="docutils literal"><span class="pre">--max-vms</span></tt> allows you to set how expandable,
+in terms of VMs, your cluster could be. The <tt class="docutils literal"><span class="pre">--cluster-size</span></tt> options permits you to fix the simulated
+dimension of your locally availbale cluster.</p>
+<p>Once the simulation is completed you can compute the results using the plot_workload.R script:</p>
 <div class="highlight-python"><pre>(vm-mad)vm-user@test:~ ./plot_workload.R simulation_output_file output_file</pre>
 </div>
-<p>At the end you should find two files: output_file.pdf and output_file.esp containing the results.</p>
+<p>Two files are produced at the end: output_file.pdf and output_file.eps. They represent what would be the graphical
+evolution of your queue with the specified options.</p>
 <div class="section" id="distill">
 <span id="id1"></span><h3>Distill<a class="headerlink" href="#distill" title="Permalink to this headline">¶</a></h3>
 <p>The purpose of the <tt class="docutils literal"><span class="pre">distil.py</span></tt> tool is to elaborate different kind of scheduling information and produce
@@ -136,10 +134,10 @@ recognized by the tool:</p>
 <blockquote>
 <div><ul class="simple">
 <li>accounting data provided by SGE,</li>
-<li>the output given by querying the SGE scheduler with the <tt class="docutils literal"><span class="pre">qstat</span> <span class="pre">-xml</span></tt> command. (to be tested)</li>
+<li>the output given by querying the SGE scheduler with the <tt class="docutils literal"><span class="pre">qstat</span> <span class="pre">-xml</span></tt> command. (working in progress)</li>
 </ul>
 </div></blockquote>
-<p>You can see all the options provided by simply doing <tt class="docutils literal"><span class="pre">./distil.py</span> <span class="pre">-h</span></tt></p>
+<p>You can see all the provided options by simply doing <tt class="docutils literal"><span class="pre">./distil.py</span> <span class="pre">-h</span></tt></p>
 <div class="section" id="distill-output">
 <span id="distoutput"></span><h4>Distill Output<a class="headerlink" href="#distill-output" title="Permalink to this headline">¶</a></h4>
 <p>The output produced by the distil.py is in the CSV format tool has the following aspect:</p>
