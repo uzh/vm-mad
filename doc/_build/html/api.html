@@ -179,6 +179,15 @@ policy.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="orchestrator.Orchestrator.new_vm">
+<tt class="descname">new_vm</tt><big>(</big><em>**attrs</em><big>)</big><a class="headerlink" href="#orchestrator.Orchestrator.new_vm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new <cite>VmInfo</cite> object.</p>
+<p>If you need to set attributes on the <cite>VmInfo</cite> object before
+the VM is even started, override this method in a subclass,
+take its return value and manipualte it at will.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="orchestrator.Orchestrator.run">
 <tt class="descname">run</tt><big>(</big><em>delay=30</em>, <em>max_cycles=0</em><big>)</big><a class="reference internal" href="_modules/orchestrator.html#Orchestrator.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#orchestrator.Orchestrator.run" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the orchestrator main loop until stopped or <cite>max_cycles</cite> reached.</p>

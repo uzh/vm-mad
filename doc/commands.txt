@@ -14,41 +14,111 @@
 Commands
 ========
 
-These instructions refer to the different commands inside VM-MAD and
-to how do they interact among them. A basic description of what must be
-the format of the various files is also given. 
+This article explains the commands available inside VM-MAD. More precisely, it gives an
+initial overview of the command, followed by a description of the possible interactions with other commands.
+References to input/output files' format is also being provided.
 
 Simulation
 ==========
 
-This section treats the simulation part of VM-MAD. 
+VM-MAD has an integrated simulation suite which enables processing SGE accounting data. The main idea 
+which stays behind the development of this part of VM-MAD could be probably better associated with the answer of the following question: 
+"What would be the evolution of my cluster's queue during the time if I had on my disposal X always running servers and the possibility to
+spawn Y Virtual Machines on demand?". Where X and Y are variables that can be chosen by the final user. The simulation process involves three
+different parts:
 
-    * Before starting the simulation a distiled accounting data has to be available. 
-    The distil.py tool has been provided for automating this part.
+    * provided accounting data has to be first elaborated from the distil.py tool. For more information see the :ref:`distill` section,
  
-    * Once the accounting data is available a simulation can be started using the simul.py
-    tool. 
 
-In the next subsections more detailed information about these tools will be provided.
+    * once the accounting data is available a simulation can be started using the simul.py tool,
 
-1. Distil 
-The purpose of this tool is to distill different kind of scheduling information, more precisely:
 
-    *  the accounting data provided by SGE,
-    *  the output given by querying with the ``qstat -xml`` command the SGE scheduler. 
+    * finally the plot_workload.R R script is used for graphically represent the results. 
+
+The simulation is executed from the simul.py script. In order to run properly the scipt needs 
+the output produced by the distil.py tool. For more information about the file format see 
+the :ref:`distoutput` section.
+
+The simulation can be set-up using the provided options::
+
+    (vm-mad)vm-user@test:~ ./simul.py --help
+    usage: simul.py [-h] [--max-vms N] [--max-delta N] [--max-idle NUM_SECS]
+                [--startup-delay NUM_SECS] [--csv-file String]
+                [--output-file String] [--cluster-size NUM_CPUS]
+                [--start-time String] [--time-interval NUM_SECS] [--version]
+
+    Simulates a cloud orchestrator
+
+    optional arguments:
+    -h, --help            show this help message and exit
+    --max-vms N, -mv N    Maximum number of VMs to be started, default is 10
+    --max-delta N, -md N  Cap the number of VMs that can be started or stopped
+                        in a single orchestration cycle. Default is 1.
+    --max-idle NUM_SECS, -mi NUM_SECS
+                        Maximum idle time (in seconds) before swithing off a
+                        VM, default is 7200
+    --startup-delay NUM_SECS, -s NUM_SECS
+                        Time (in seconds) delay before a started VM is READY.
+                        Default is 60
+    --csv-file String, -csvf String
+                        File containing the CSV information, accounting.csv
+    --output-file String, -o String
+                        File name where the output of the simulation will be
+                        stored, main_sim.txt
+    --cluster-size NUM_CPUS, -cs NUM_CPUS
+                        Number of VMs, used for the simulation of real
+                        available cluster: 20
+    --start-time String, -stime String
+                        Start time for the simulation, default: -1
+    --time-interval NUM_SECS, -timei NUM_SECS
+                        UNIX interval in seconds used as parsing interval for
+                        the jobs in the CSV file, default: 3600
+    --version, -V         show program's version number and exit
+
+The ``--max-vms`` and ``--cluster-size`` options are probably the most important as they permits you 
+to simulate different configuration scenarios. The ``--max-vms`` allows you to choose how exandable,
+in terms of VMs, your cluster could be.  On the other hand the ``--cluster-size`` represents the fixed 
+dimension of your cluster.
+
+Once the simulation is complited you can graphically visualize the results using the plot_workload.R script 
+by simply executing::
+
+    (vm-mad)vm-user@test:~ ./plot_workload.R simulation_output_file output_file 
+
+At the end you should find two files: output_file.pdf and output_file.esp containing the results. 
+
+
+.. _distill:
+
+Distill
+-------
+The purpose of the ``distil.py`` tool is to elaborate different kind of scheduling information and produce
+an output in CSV format legible from the simulator suite. The following data input formats are currently
+recognized by the tool:
+
+    *  accounting data provided by SGE,
+    *  the output given by querying the SGE scheduler with the ``qstat -xml`` command. (to be tested)
 
 You can see all the options provided by simply doing ``./distil.py -h`` 
-The output produced by ``distil.py`` is in CSV format. 
 
-2. Simulate 
+.. _distoutput:
 
-TO BE DONE
+^^^^^^^^^^^^^^
+Distill Output
+^^^^^^^^^^^^^^
 
-File format: CSV
-================
+The output produced by the distil.py is in the CSV format tool has the following aspect::
 
-We widely use the CSV as file referencing format. Bellow the different
-use cases where the format has been used. 
+        JOBID, SUBMITTED_AT, RUNNING_AT, FINISHED_AT, WAIT_DURATION, RUN_DURATION
+        1,     1282733694,   1282733707, 1282733785,  13,            78
+        4,     1282736899,   1282736911, 1282737239,  12,            328
+        6,     1282738136,   1282738141, 1282738141,  5,             0
+        7,     1282738434,   1282738441, 1282738568,  7,             127
+        8,     1282739338,   1282739342, 1282740438,  4,             1096
+
+The first row of the file is quite self-explaining about what kind of information, each of the columns, is containing.
+ 
+
 
 .. References
 
@@ -61,5 +131,3 @@ use cases where the format has been used.
 ..
   Local variables:
   mode: rst
-  End:
-
