@@ -40,7 +40,7 @@ from vmmad.batchsys.randomjobs import RandomJobs
 from vmmad.batchsys.gridengine import GridEngine
 from vmmad.orchestrator import JobInfo, VmInfo
 from vmmad.provider.libcloud import DummyCloud, EC2Cloud
-#from vmmad.provider.gc3pie import SmscgProvider
+from vmmad.provider.gc3pie import SmscgProvider
 from vmmad.webapp import OrchestratorWebApp
 
 
@@ -51,11 +51,11 @@ class DemoOrchestrator(OrchestratorWebApp):
         OrchestratorWebApp.__init__(
             self,
             delay=30,
-            cloud=EC2Cloud(image='ami-c2419aab', kind='m1.small'),
-            #cloud=SmscgProvider(),
+            #cloud=EC2Cloud(image='ami-c2419aab', kind='m1.small',
+            cloud=SmscgProvider(),
             batchsys=GridEngine('bfabric'),
             #batchsys=RandomJobs(3, 0.25, timer=self.time),
-            max_vms=2)
+            max_vms=8)
         
 
     ##
@@ -63,11 +63,11 @@ class DemoOrchestrator(OrchestratorWebApp):
     ##
     def is_cloud_candidate(self, job):
         # only jobs submitted to the `cloud` queue are candidates
-        return (job.name.startswith('fgcz_sge_peakplot_glyco1_ng'))
+        return (job.name.startswith('OMSSACL_SMSCG'))
 
     def is_new_vm_needed(self):
         # if we have more jobs queued than started VMs, start a new one
-        if len(self.candidates) > len(self.vms):
+        if len(self.candidates) > 2*len(self.vms):
             return True
         return False
 
@@ -76,6 +76,7 @@ class DemoOrchestrator(OrchestratorWebApp):
         if len(vm.jobs) == 0 and (vm.last_idle > TIMEOUT):
             return True
         else:
-            log.debug("Not stopping VM %s: %d jobs running, %d seconds idle.",
-                      vm.nodename, len(vm.jobs), vm.last_idle)
+            log.debug(
+                "Not stopping VM %s: %d jobs running, %d seconds idle.",
+                vm.nodename, len(vm.jobs), vm.last_idle)
             return False

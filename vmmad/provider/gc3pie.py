@@ -55,7 +55,7 @@ class VmmadAppPot(AppPotApplication):
                     output_dir = vm_output_dir,
                     stdout = "apppot.out",
                     jobname = "VMMAD",
-                    tags = ["TEST/APPPOT_VM-MAD-1.0"],
+                    tags = ["APPS/BIO/APPPOT-FGCZ-1.0"],
                     requested_architecture = gc3libs.Run.Arch.X86_64,
                     memory = 2,
                     )
