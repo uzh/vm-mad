@@ -627,19 +627,20 @@ class Orchestrator(object):
     def _restore_from_file(self, path):
         with open(path, 'r') as chkptfile:
             vms = pickle.load(chkptfile)
-        log.info("Loaded %d VMs from checkpoint file '%s'", len(vms), path)
-        # cannot just assign `vms` to `self.vms` as the latter is a
-        # mp-shared object; so copy VMInfo objects one by one...
-        for vm in vms:
-            self.vms[vm.vmid] = vm
-        # keep numbering consistent
-        self._vmid = 1 + max(vm.vmid for vm in self.vms)
-        # re-construct `self._vms_by_nodename`
-        self._vms_by_nodename = dict((vm.nodename, vm)
-                                     for vm in self.vms if vm.state == VmInfo.READY)
-        # re-construct `self._pending_auth`
-        self._pending_auth = dict((vm.auth, vm)
-                                  for vm in self.vms if vm.state == VmInfo.STARTING)
+        log.info("Loaded %d VMs from checkpoint file '%s'.", len(vms), path)
+        if len(vms) > 0:
+            # cannot just assign `vms` to `self.vms` as the latter is a
+            # mp-shared object; so copy VMInfo objects one by one...
+            for vm in vms:
+                self.vms[vm.vmid] = vm
+            # keep numbering consistent
+            self._vmid = 1 + max(vm.vmid for vm in self.vms)
+            # re-construct `self._vms_by_nodename`
+            self._vms_by_nodename = dict((vm.nodename, vm)
+                                         for vm in self.vms if vm.state == VmInfo.READY)
+            # re-construct `self._pending_auth`
+            self._pending_auth = dict((vm.auth, vm)
+                                      for vm in self.vms if vm.state == VmInfo.STARTING)
 
     ##
     ## policy implementation interface
