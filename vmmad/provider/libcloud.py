@@ -29,6 +29,8 @@ __version__ = '$Revision$'
 # stdlib imports
 from abc import abstractmethod
 from copy import copy
+import os
+import sys
 
 # libcloud imports
 import libcloud.compute.types
@@ -101,7 +103,7 @@ class DummyCloud(CloudNodeProvider):
         # associate the Node ID we get from the cloud provider with
         # the VM object we get from the orchestrator
         self._instance_to_vm_map = { }
-        
+
 
     def start_vm(self, vm):
         vm.instance = self.provider.create_node(
@@ -186,7 +188,7 @@ class EC2Cloud(CloudNodeProvider):
         # associate the Node ID we get from the cloud provider with
         # the VM object we get from the orchestrator
         self._instance_to_vm_map = { }
-        
+
 
     def start_vm(self, vm):
         vm.instance = self.provider.create_node(
