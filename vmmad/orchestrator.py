@@ -617,7 +617,8 @@ class Orchestrator(object):
         #     the `.OLD` file name
         #
         # XXX: this will only work on UNIX filesystems!
-        os.link(path, path+'.OLD')
+        if os.path.exists(path):
+            os.link(path, path+'.OLD')
         os.rename(path_new, path)
 
     def _restore_from_file(self, path):
