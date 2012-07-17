@@ -51,8 +51,10 @@ from vmmad.orchestrator import Orchestrator, JobInfo, VmInfo
 
 class OrchestratorWebApp(Orchestrator):
 
-    def __init__(self, delay, cloud, batchsys, max_vms, **kwargs):
-        Orchestrator.__init__(self, cloud, batchsys, max_vms, **kwargs)
+    def __init__(self, delay, cloud, batchsys, max_vms, chkptfile=None, **kwargs):
+        Orchestrator.__init__(self, cloud, batchsys, max_vms,
+                              chkptfile=chkptfile,
+                              **kwargs)
 
         # run the Orchestrator main loop in a separate thread
         def run_main_loop():
@@ -65,7 +67,7 @@ class OrchestratorWebApp(Orchestrator):
         self._daemon = threading.Thread(target=run_main_loop)
         self._daemon.daemon = True
         self._daemon.start()
-        
+
 
     def ready(self, request):
         # try to extract nodename from HTTP request
@@ -153,5 +155,5 @@ class OrchestratorWebApp(Orchestrator):
         html += """</table>"""
         # end it all
         html += """</body>"""
-        
+
         return HttpResponse(html)

@@ -30,6 +30,7 @@ __version__ = '$Revision$'
 
 # stdlib imports
 from abc import abstractmethod
+import cPickle as pickle
 import multiprocessing.dummy as mp
 import os
 import sys
@@ -244,12 +245,14 @@ class Orchestrator(object):
     :param int max_delta: Maximum number of VMs to start/stop in one cycle.
     :param int vm_start_timeout: Maximum amount of time (seconds) to wait for a VM to turn to ``READY`` state.
     :param int threads:   Size of the thread pool for non-blocking operations.
+    :param str chkptfile: Path to a file where to checkpoint VM states, or `None` to disable checkpointing.
     """
 
     def __init__(self, cloud, batchsys, max_vms,
                  max_delta=1,
                  vm_start_timeout=10*60, # 10 minutes
-                 threads=8):
+                 threads=8,
+                 chkptfile=None):
         # thread pool to enqueue blocking operations
         self._threadpool = mp.Pool(threads)
         self._async = self._threadpool.apply_async # shortcut
@@ -289,6 +292,16 @@ class Orchestrator(object):
 
         # if a VM does not turn to READY state within this time allowance, cancel it
         self.vm_start_timeout = vm_start_timeout
+
+        # start from saved state (if any)
+        self.chkptfile = chkptfile
+        if chkptfile is not None:
+            if os.path.exists(chkptfile):
+                log.info("Loading saved state from file '%s' ...", chkptfile)
+                self._restore_from_file(chkptfile)
+            else:
+                log.info("No checkpoint file '%s':"
+                         " not restoring saved state, starting afresh instead.", chkptfile)
 
 
     def run(self, delay=30, max_cycles=0):
@@ -357,6 +370,8 @@ class Orchestrator(object):
             self.after()
             self.cycle +=1
             done += 1
+            if self.chkptfile:
+                self._save_to_file(self.chkptfile)
             last_cycle_at = now
 
             if delay > 0:
@@ -584,6 +599,43 @@ class Orchestrator(object):
         log.info("VM %s reports being ready as node '%s'", vm.vmid, nodename)
         return True
 
+    ##
+    ## checkpoint/restart support
+    ##
+    def _save_to_file(self, path):
+        path_new = path + '.NEW'
+        with open(path_new, 'w') as chkptfile:
+            # clone `self.vms` into a dict to avoid errors due to
+            # concurrent modification
+            pickle.dump(dict(self.vms), chkptfile)
+        # we want to ensure that a valid save file always exists, even
+        # if the Orchestrator crashes in the middle of this
+        # function. So the strategy is:
+        #   - create a *hard* link (old savefile) => (current savefile)
+        #   - rename the new savefile to the current savefile; this
+        #     will delete the hard link and leave the old content in
+        #     the `.OLD` file name
+        #
+        # XXX: this will only work on UNIX filesystems!
+        os.link(path, path+'.OLD')
+        os.rename(path_new, path)
+
+    def _restore_from_file(self, path):
+        with open(path, 'r') as chkptfile:
+            vms = pickle.load(chkptfile)
+        log.info("Loaded %d VMs from checkpoint file '%s'", len(vms), path)
+        # cannot just assign `vms` to `self.vms` as the latter is a
+        # mp-shared object; so copy VMInfo objects one by one...
+        for vm in vms:
+            self.vms[vm.vmid] = vm
+        # keep numbering consistent
+        self._vmid = 1 + max(vm.vmid for vm in self.vms)
+        # re-construct `self._vms_by_nodename`
+        self._vms_by_nodename = dict((vm.nodename, vm)
+                                     for vm in self.vms if vm.state == VmInfo.READY)
+        # re-construct `self._pending_auth`
+        self._pending_auth = dict((vm.auth, vm)
+                                  for vm in self.vms if vm.state == VmInfo.STARTING)
 
     ##
     ## policy implementation interface

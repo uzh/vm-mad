@@ -55,8 +55,9 @@ class DemoOrchestrator(OrchestratorWebApp):
             cloud=SmscgProvider(),
             batchsys=GridEngine('bfabric'),
             #batchsys=RandomJobs(3, 0.25, timer=self.time),
-            max_vms=8)
-        
+            max_vms=8,
+            chkptfile='vm-mad.state')
+
 
     ##
     ## policy implementation interface
