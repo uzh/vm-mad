@@ -464,7 +464,8 @@ class Orchestrator(object):
         Return the full list of active job objects (i.e., not just the
         candidates for cloud execution).
         """
-        log.debug("Updating job status; last update at %s", self.last_update)
+        log.debug("Updating job status; last update at %s", 
+                  time.ctime(self.last_update))
         now = self.time()
 
         current_jobs = self.batchsys.get_sched_info()    
@@ -474,10 +475,28 @@ class Orchestrator(object):
                 self.jobs[jobid].update(job)
             else:
                 self.jobs[jobid] = job
-                log.info("New job %s %s in state %s appeared; submitted at %s.", jobid,
-                         (("'%s'" % job.name) if 'name' in job else '(no job name)'),
-                         job.state, job.submitted_at)
-                assert job.submitted_at >= self.last_update
+                if 'running_at' in job:
+                    log.info(
+                        "New job %s %s in state %s appeared; running since %s.", 
+                        jobid,
+                        (("'%s'" % job.name) if 'name' in job else '(no job name)'),
+                        job.state, 
+                        time.ctime(job.running_at))
+                    assert job.running_at >= self.last_update
+                elif 'submitted_at' in job:
+                    log.info(
+                        "New job %s %s in state %s appeared; submitted since %s.", 
+                        jobid,
+                        (("'%s'" % job.name) if 'name' in job else '(no job name)'),
+                        job.state, 
+                        time.ctime(job.submitted_at))
+                    assert job.submitted_at >= self.last_update
+                else:
+                    log.info(
+                        "New job %s %s in state %s appeared.", 
+                        jobid,
+                        (("'%s'" % job.name) if 'name' in job else '(no job name)'),
+                        job.state)
         
         # remove finished jobs
         jobids = set(self.jobs.iterkeys())
@@ -489,11 +508,13 @@ class Orchestrator(object):
                 assert 'exec_node_name' in job
                 log.info("Job %s terminated its execution on node '%s'",
                          jobid, self.jobs[jobid].exec_node_name)
-            else:
+            elif job.state == JobInfo.PENDING:
                 assert 'exec_node_name' not in job, (
                     "Error in job object '%s': expecting 'exec_node_name' not to be there!",
                     str.join(', ', [ ("%s=%r" % (k,v)) for k,v in job.items() ]))
-                log.info("Job %s was cancelled.", jobid)
+                log.info("Job %s (state %s) was cancelled.", jobid, job.state)
+            else:
+                log.info("Job %s (state %s) was deleted.", jobid, job.state)
             if job in self.candidates:
                 self.candidates.remove(job)
             del self.jobs[jobid]
@@ -506,10 +527,11 @@ class Orchestrator(object):
         # update info on running jobs
         for job in self.jobs.values():
             if job.state == JobInfo.RUNNING and job.running_at > self.last_update:
-                log.debug("Job %s running on node '%s'", job.jobid, job.exec_node_name)
+                log.info("Job %s running on node '%s'", job.jobid, job.exec_node_name)
                 # job just went running, it's longer a candidate
                 if job in self.candidates:
                     self.candidates.remove(job)
+                    log.debug("Job %s is no longer candidate for running on the cloud.", job.jobid)
                 # record which jobs are running on which VM
                 if job.exec_node_name in self._vms_by_nodename:
                     self._vms_by_nodename[job.exec_node_name].jobs.add(job.jobid)
@@ -518,6 +540,7 @@ class Orchestrator(object):
                 if self.is_cloud_candidate(job):
                     assert job not in self.candidates
                     self.candidates.add(job)
+                    log.info("Enlisting job %s as candidate for running on the cloud.", job.jobid)
             else:
                 # ignore
                 pass

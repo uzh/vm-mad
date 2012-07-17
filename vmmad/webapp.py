@@ -61,7 +61,7 @@ class OrchestratorWebApp(Orchestrator):
                     self.run(delay)
                 except Exception, ex:
                     log.error("%s in Orchestrator's main loop: %s",
-                              ex.__class__.__name__, str(ex))
+                              ex.__class__.__name__, str(ex), exc_info=True)
         self._daemon = threading.Thread(target=run_main_loop)
         self._daemon.daemon = True
         self._daemon.start()
