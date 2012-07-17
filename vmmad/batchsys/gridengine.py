@@ -80,8 +80,6 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
             return {
                 'JB_job_number':'jobid',
                 'JB_name':'name',
-                'JB_submission_time':'submit_time',
-                'JAT_start_time':'start_time',
                 }[field]
         except KeyError:
             # ...and by default, keep field name unchanged
@@ -149,9 +147,9 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
         elif 'JB_job_number' == name:
             self.current.jobid = value_str
         elif 'JB_submission_time' == name:
-            self.current.submitted_at = time.strptime(value_str, '%Y-%m-%dT%H:%M:%S')
+            self.current.submitted_at = time.mktime(time.strptime(value_str, '%Y-%m-%dT%H:%M:%S'))
         elif 'JAT_start_time' == name:
-            self.current.running_at = time.strptime(value_str, '%Y-%m-%dT%H:%M:%S')
+            self.current.running_at = time.mktime(time.strptime(value_str, '%Y-%m-%dT%H:%M:%S'))
         elif name in self.JOB_ATTRIBUTES:
             # convert each XML attribute to a Python representation
             # (defaulting to `str`, see CONVERT above)
