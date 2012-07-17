@@ -509,9 +509,9 @@ class Orchestrator(object):
                 log.info("Job %s terminated its execution on node '%s'",
                          jobid, self.jobs[jobid].exec_node_name)
             elif job.state == JobInfo.PENDING:
-                assert 'exec_node_name' not in job, (
-                    "Error in job object '%s': expecting 'exec_node_name' not to be there!",
-                    str.join(', ', [ ("%s=%r" % (k,v)) for k,v in job.items() ]))
+                assert ('exec_node_name' not in job) or (job.exec_node_name is None), (
+                    "Error in job object '%s': expecting 'exec_node_name' not to be there!"
+                    % str.join(', ', [ ("%s=%r" % (k,v)) for k,v in job.items() ]))
                 log.info("Job %s (state %s) was cancelled.", jobid, job.state)
             else:
                 log.info("Job %s (state %s) was deleted.", jobid, job.state)
