@@ -92,7 +92,7 @@ if [ -n "$1" ]; then
     cmd="$1"
     shift
 else
-    cmd="runserver --noreload"
+    cmd="runserver --noreload 0.0.0.0:8000"
 fi
 
 exec django-admin.py $cmd --pythonpath="$dir" --settings="$module" "$@"
