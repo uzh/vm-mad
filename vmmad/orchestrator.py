@@ -3,11 +3,12 @@
 """
 Launch compute node VMs on demand.
 """
-# Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
+# Copyright (C) 2011-2012 ETH Zurich and University of Zurich. All rights reserved.
 #
 # Authors:
 #   Christian Panse <cp@fgcz.ethz.ch>
 #   Riccardo Murri <riccardo.murri@gmail.com>
+#   Tyanko Aleksiev <tyanko.alexiev@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -195,7 +196,7 @@ class VmInfo(Struct):
             return ("VM %s" % self.vmid)
     __repr__ = __str__
 
-    
+
     def __hash__(self):
         """Use the VM id as unique hash value."""
         return hash(self.vmid)
@@ -252,34 +253,34 @@ class Orchestrator(object):
         # thread pool to enqueue blocking operations
         self._threadpool = mp.Pool(threads)
         self._async = self._threadpool.apply_async # shortcut
-        
+
         # allocator for shared memory objects
         self._shm = mp.Manager()
-        
+
         # cloud provider
         self.cloud = cloud
 
         # batch system interface
         self.batchsys = batchsys
-        
+
         # max number of VMs that are allocated on the cloud
         self.max_vms = max_vms
 
         # max number of VMs that can be started each cycle
         self.max_delta = max_delta
-        
+
         # VMs controlled by this `Orchestrator` instance (indexed by VMID)
         self.vms = self._shm.dict()
         self._pending_auth = { }
         self._vms_by_nodename = { }
-        
+
         # mapping jobid to job informations
         self.jobs = { }
         self.candidates = set()
-        
+
         # VM book-keeping
         self._vmid = 0
-        
+
         # Time simulation variable
         self.cycle = 0
 
@@ -310,6 +311,7 @@ class Orchestrator(object):
             elapsed = now - last_cycle_at
 
             self.before()
+
             self.update_job_status()
             # XXX: potentially blocking - should timeout!
             self.cloud.update_vm_status(self.vms.values())
@@ -356,7 +358,7 @@ class Orchestrator(object):
             self.cycle +=1
             done += 1
             last_cycle_at = now
-            
+
             if delay > 0:
                 t1 = time.time() # need real time, not the simulated one
                 elapsed = t1 - t0
@@ -407,7 +409,7 @@ class Orchestrator(object):
             # What's the correct course of action?
             log.error("Error stopping VM %s: %s: %s",
                       vm.vmid, ex.__class__.__name__, str(ex), exc_info=__debug__)
-            
+
 
     def before(self):
         """Hook called at the start of the main run() cycle."""
@@ -464,11 +466,11 @@ class Orchestrator(object):
         Return the full list of active job objects (i.e., not just the
         candidates for cloud execution).
         """
-        log.debug("Updating job status; last update at %s", 
+        log.debug("Updating job status; last update at %s",
                   time.ctime(self.last_update))
         now = self.time()
 
-        current_jobs = self.batchsys.get_sched_info()    
+        current_jobs = self.batchsys.get_sched_info()
         for job in current_jobs:
             jobid = job.jobid
             if jobid in self.jobs:
@@ -477,27 +479,27 @@ class Orchestrator(object):
                 self.jobs[jobid] = job
                 if 'running_at' in job:
                     log.info(
-                        "New job %s %s in state %s appeared; running since %s.", 
+                        "New job %s %s in state %s appeared; running since %s.",
                         jobid,
                         (("'%s'" % job.name) if 'name' in job else '(no job name)'),
-                        job.state, 
+                        job.state,
                         time.ctime(job.running_at))
                     assert job.running_at >= self.last_update
                 elif 'submitted_at' in job:
                     log.info(
-                        "New job %s %s in state %s appeared; submitted since %s.", 
+                        "New job %s %s in state %s appeared; submitted since %s.",
                         jobid,
                         (("'%s'" % job.name) if 'name' in job else '(no job name)'),
-                        job.state, 
+                        job.state,
                         time.ctime(job.submitted_at))
                     assert job.submitted_at >= self.last_update
                 else:
                     log.info(
-                        "New job %s %s in state %s appeared.", 
+                        "New job %s %s in state %s appeared.",
                         jobid,
                         (("'%s'" % job.name) if 'name' in job else '(no job name)'),
                         job.state)
-        
+
         # remove finished jobs
         jobids = set(self.jobs.iterkeys())
         current_jobids = set(job.jobid for job in current_jobs)
@@ -547,7 +549,7 @@ class Orchestrator(object):
 
         self.last_update = now
         return self.jobs
-    
+
 
     def vm_is_ready(self, auth, nodename):
         """
@@ -560,7 +562,7 @@ class Orchestrator(object):
 
         The `nodename` argument must be the host name that the VM
         reports to the batch system, i.e., the node name as it appears
-        in the batch system scheduler listings/config. 
+        in the batch system scheduler listings/config.
         """
         if auth not in self._pending_auth:
             log.error(
