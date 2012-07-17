@@ -618,6 +618,9 @@ class Orchestrator(object):
         #
         # XXX: this will only work on UNIX filesystems!
         if os.path.exists(path):
+            path_old = path + '.OLD'
+            if os.path.exists(path_old):
+                os.unlink(path_old)
             os.link(path, path+'.OLD')
         os.rename(path_new, path)
 
