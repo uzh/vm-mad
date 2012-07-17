@@ -631,16 +631,18 @@ class Orchestrator(object):
         if len(vms) > 0:
             # cannot just assign `vms` to `self.vms` as the latter is a
             # mp-shared object; so copy VMInfo objects one by one...
-            for vm in vms:
+            for vmid, vm in vms.iteritems():
                 self.vms[vm.vmid] = vm
             # keep numbering consistent
-            self._vmid = 1 + max(vm.vmid for vm in self.vms)
+            self._vmid = 1 + max(int(vm.vmid) for vm in self.vms.itervalues())
             # re-construct `self._vms_by_nodename`
             self._vms_by_nodename = dict((vm.nodename, vm)
-                                         for vm in self.vms if vm.state == VmInfo.READY)
+                                         for vm in self.vms.itervalues() 
+                                         if vm.state == VmInfo.READY)
             # re-construct `self._pending_auth`
             self._pending_auth = dict((vm.auth, vm)
-                                      for vm in self.vms if vm.state == VmInfo.STARTING)
+                                      for vm in self.vms.itervalues() 
+                                      if vm.state == VmInfo.STARTING)
 
     ##
     ## policy implementation interface
