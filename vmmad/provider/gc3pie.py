@@ -51,9 +51,10 @@ class VmmadAppPot(AppPotApplication):
                     executable = 'tail',
                     arguments = ['-F', '/var/log/vmmad.log'],
                     inputs = [], 
-                    outputs = [],   
+                    outputs = ['apppot.out'],
                     output_dir = vm_output_dir,
                     stdout = "apppot.out",
+		    join=True,
                     jobname = "VMMAD",
                     tags = ["APPS/BIO/APPPOT-FGCZ-1.0"],
                     requested_architecture = gc3libs.Run.Arch.X86_64,
@@ -105,9 +106,10 @@ class SmscgProvider(NodeProvider):
 
     def stop_vm(self, vm):
         """
-        Kill the VM by kill the job
+        Stop the VM by killing the job.
         """
+	# FIXME: should catch exceptions raised by `g.kill` and `g.free`!
         self.g.kill(vm.gc3pie_app) 
-        self.g.fetch_output(vm.gc3pie_app)
+        #self.g.fetch_output(vm.gc3pie_app)
         self.g.free(vm.gc3pie_app)
         vm.state = VmInfo.DOWN
