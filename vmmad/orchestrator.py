@@ -554,8 +554,7 @@ class Orchestrator(object):
                     self._vms_by_nodename[job.exec_node_name].jobs.add(job.jobid)
             elif job.state == JobInfo.PENDING and job.submitted_at > self.last_update:
                 # update candidates' information
-                if self.is_cloud_candidate(job):
-                    assert job not in self.candidates
+                if self.is_cloud_candidate(job) and job not in self.candidates:
                     self.candidates.add(job)
                     log.info("Enlisting job %s as candidate for running on the cloud.", job.jobid)
             else:
