@@ -142,7 +142,7 @@ class _QstatXmlHandler(xml.sax.ContentHandler):
                 self.current.state = JobInfo.OTHER
             elif 'q' in value_str:
                 self.current.state = JobInfo.PENDING
-            elif 'r' in value_str:
+            elif ('r' in value_str) or ('t' in value_str):
                 self.current.state = JobInfo.RUNNING
         elif 'JB_job_number' == name:
             self.current.jobid = value_str
