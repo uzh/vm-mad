@@ -379,8 +379,8 @@ class Orchestrator(object):
                 elapsed = t1 - t0
                 if elapsed > delay:
                     log.warning("Cycle %d took more than %.2f seconds!"
-                                " Starting new cycle without delay."
-                                % (self.cycle, delay))
+                                " Starting new cycle without delay.",
+                                self.cycle, delay)
                 else:
                     time.sleep(delay - elapsed)
 
@@ -636,11 +636,11 @@ class Orchestrator(object):
             self._vmid = 1 + max(int(vm.vmid) for vm in self.vms.itervalues())
             # re-construct `self._vms_by_nodename`
             self._vms_by_nodename = dict((vm.nodename, vm)
-                                         for vm in self.vms.itervalues() 
+                                         for vm in self.vms.itervalues()
                                          if vm.state == VmInfo.READY)
             # re-construct `self._pending_auth`
             self._pending_auth = dict((vm.auth, vm)
-                                      for vm in self.vms.itervalues() 
+                                      for vm in self.vms.itervalues()
                                       if vm.state == VmInfo.STARTING)
 
     ##

@@ -92,10 +92,10 @@ class OrchestratorWebApp(Orchestrator):
                                 status=400, content_type='text/plain')
         # perform registration
         nodename = nodename.split('.')[0]
-        log.info("Host '%s' (%s) registering as node '%s'"
-                 % ((hostname if hostname is not None else "<UNKNOWN>"),
-                    (addr if addr is not None else "unknown address"),
-                    nodename))
+        log.info("Host '%s' (%s) registering as node '%s'",
+                 (hostname if hostname is not None else "<UNKNOWN>"),
+                 (addr if addr is not None else "unknown address"),
+                 nodename)
         self.vm_is_ready(auth, nodename)
         return HttpResponse("OK", content_type='text/plain')
 
