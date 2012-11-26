@@ -46,10 +46,11 @@ from vmmad.webapp import OrchestratorWebApp
 
 
 class DemoOrchestrator(OrchestratorWebApp):
-    
-    def __init__(self, job_number=10, min_duration=1, max_duration=8*60*60):
+
+    def __init__(self, flaskapp):
         OrchestratorWebApp.__init__(
             self,
+            flaskapp,
             delay=30,
             #cloud=EC2Cloud(image='ami-c2419aab', kind='m1.small',
             cloud=SmscgProvider(),

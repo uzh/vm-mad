@@ -88,6 +88,8 @@ setuptools.setup(
         'texttable',
         # pyCLI -- object-oriented command-line app programming
         'pyCLI==2.0.2',
+        # flask -- webapp mini-framework
+        'flask>=0.9',
         ],
 
     # additional non-Python files to be bundled in the package

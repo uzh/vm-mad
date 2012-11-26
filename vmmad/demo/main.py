@@ -31,19 +31,27 @@ __version__ = '$Revision$'
 import os
 import sys
 
+# 3rd party imports
+from flask import Flask
+
 # local imports
 from vmmad import log
-#from vmmad.demo.phony import DemoOrchestrator
-from vmmad.demo.fgcz import DemoOrchestrator
-
+from vmmad.demo.phony import DemoOrchestrator
+#from vmmad.demo.fgcz import DemoOrchestrator
 
 # the main program
 log.warning(
     "Importing demo.main as module '%s', creating DemoOrchestrator instance.",
     __name__)
 
+# set up the Flask web application
+app = Flask(__name__)
+app.debug= True
 
 # The actual Orchestrator instance.  There should be one and only one
 # such instance running.
-demo = DemoOrchestrator()
+demo = DemoOrchestrator(app)
 
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')

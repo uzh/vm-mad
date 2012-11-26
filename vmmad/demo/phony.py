@@ -44,15 +44,16 @@ from vmmad.webapp import OrchestratorWebApp
 
 
 class DemoOrchestrator(OrchestratorWebApp):
-    
-    def __init__(self, job_number=10, min_duration=1, max_duration=8*60*60):
+
+    def __init__(self, flaskapp):
         OrchestratorWebApp.__init__(
             self,
-            delay=5,
+            flaskapp,
+            delay=15,
             cloud=DummyCloud('1', '1'),
             batchsys=RandomJobs(3, 0.25, timer=self.time),
             max_vms=10)
-        
+
 
     ##
     ## policy implementation interface
@@ -62,8 +63,8 @@ class DemoOrchestrator(OrchestratorWebApp):
         return True
 
     def is_new_vm_needed(self):
-        pending = len([ job for job in self.jobs if job.state == JobInfo.PENDING ])
-        running = len([ job for job in self.jobs if job.state == JobInfo.RUNNING ])
+        pending = len([ job for job in self.jobs.itervalues() if job.state == JobInfo.PENDING ])
+        running = len([ job for job in self.jobs.itervalues() if job.state == JobInfo.RUNNING ])
         if pending > 2*running:
             return True
         return False

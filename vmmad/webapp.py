@@ -42,7 +42,7 @@ import time
 import traceback
 
 # 3rd party imports
-from django.http import HttpResponse
+from flask import request, render_template
 
 # local imports
 from vmmad import log
@@ -51,7 +51,7 @@ from vmmad.orchestrator import Orchestrator, JobInfo, VmInfo
 
 class OrchestratorWebApp(Orchestrator):
 
-    def __init__(self, delay, cloud, batchsys, max_vms, chkptfile=None, **kwargs):
+    def __init__(self, flaskapp, delay, cloud, batchsys, max_vms, chkptfile=None, **kwargs):
         Orchestrator.__init__(self, cloud, batchsys, max_vms,
                               chkptfile=chkptfile,
                               **kwargs)
@@ -68,28 +68,19 @@ class OrchestratorWebApp(Orchestrator):
         self._daemon.daemon = True
         self._daemon.start()
 
+        self.flaskapp = flaskapp
+        # register methods with the Flask webapp
+        self.flaskapp.route('/')(self.status)
+        self.flaskapp.route('/x/ready')(self.ready)
 
-    def ready(self, request):
+
+    def ready(self):
         # try to extract nodename from HTTP request
-        hostname = None
-        addr = None
-        if 'REMOTE_HOST' in request.META:
-            hostname = request.META['REMOTE_HOST']
-        if 'REMOTE_ADDR' in request.META:
-            addr = request.META['REMOTE_ADDR']
+        addr = request.remote_addr
+        hostname = request.environ['HTTP_REMOTE_HOST'] if ('HTTP_REMOTE_HOST' in request.environ) else None
         # look for POST/GET parameters
-        if 'auth' in request.REQUEST:
-            auth = request.REQUEST['auth']
-        else:
-            # missing required parameter
-            return HttpResponse("ERROR: Missing required parameter 'auth'",
-                                status=400, content_type='text/plain')
-        if 'hostname' in request.REQUEST:
-            nodename = request.REQUEST['hostname']
-        else:
-            # missing required parameter
-            return HttpResponse("ERROR: Missing required parameter 'hostname'",
-                                status=400, content_type='text/plain')
+        auth = request.values['auth']
+        nodename = request.values['hostname']
         # perform registration
         nodename = nodename.split('.')[0]
         log.info("Host '%s' (%s) registering as node '%s'",
@@ -97,63 +88,21 @@ class OrchestratorWebApp(Orchestrator):
                  (addr if addr is not None else "unknown address"),
                  nodename)
         self.vm_is_ready(auth, nodename)
-        return HttpResponse("OK", content_type='text/plain')
+        return 'OK'
 
 
-    def status(self, request):
-        html = """
-            <html>
-            <head>
-              <title>%(app)s status</title>
-            </head>
-            <body>
-            <p>
-              %(app)s is up and running!
-            </p>
-            <h2>Orchestrator status</h2>
-            <p>
-              The current orchestrator status is as follows:
-              <ul>
-                <li>%(cycles)s cycles have passed
-                <li>%(num_started)s VMs have been started
-                <li>%(num_active)s VMs are currently active (ready for processing jobs)
-              </ul>
-            </p>
-            """ % dict(
-                app=self.__class__.__name__,
-                cycles=self.cycle,
-                num_started=len(self.vms),
-                num_active=len(self._vms_by_nodename),
+    def status(self):
+        params = dict(
+            appname=self.__class__.__name__,
+            cycles=self.cycle,
+            num_started=len(self.vms),
+            num_active=len(self._vms_by_nodename),
+            vms=[ dict(vmid=vm.vmid,
+                       state=vm.state,
+                       nodename=(vm.nodename if 'nodename' in vm else "(unknown)"),
+                       is_starting=(vm.state == VmInfo.READY),
+                       ready_url=("/x/ready?auth=%s&hostname=vm-%s" % (vm.auth, vm.vmid)),
+                    ) for vm in self.vms.values()
+                  ],
             )
-        # make a table of the started VMs
-        html += """
-            <h2>Started VMs</h2>
-              <table>
-                <tr>
-                  <th>ID</th>
-                  <th>State</th>
-                  <th>Node name</th>
-                </tr>
-              """
-        for vm in self.vms.values():
-            html += """
-            <tr>
-              <td>%(vmid)s</td>
-              <td>%(state)s</td>
-              <td>%(nodename)s</td>
-              <td>%(ready_url)s</td>
-            </tr>
-            """ % dict(
-              vmid=vm.vmid,
-              state=vm.state,
-              nodename=(vm.nodename if 'nodename' in vm else "(unknown)"),
-              ready_url=(('''
-                  <a href="/x/ready?auth=%s&hostname=vm-%s">Manually mark as ready</a>
-                          ''' % (vm.auth, vm.vmid))
-                         if vm.state != VmInfo.READY else ""),
-            )
-        html += """</table>"""
-        # end it all
-        html += """</body>"""
-
-        return HttpResponse(html)
+        return render_template('status.html', **params)
