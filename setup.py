@@ -45,17 +45,17 @@ setuptools.setup(
     packages = setuptools.find_packages(".", exclude=['ez_setup']),
 
     # metadata for upload to PyPI
-    description = "A Python library and simple command-line frontend for computational job submission to multiple resources.",
+    description = "Dynamically expand batch-computing clusters with VM nodes.",
     long_description = read_whole_file('README.txt'),
     author = "VM-MAD Project (ETH Zurich and University of Zurich)",
     author_email = "virtualization@gc3.lists.uzh.ch",
     license = "Apache Software License 2.0",
-    keywords = "virtualization cloud ec2 sge gridengine batch job",
+    keywords = "virtualization cloud ec2 sge gridengine batch cluster",
     url = "http://vm-mad.googlecode.com/", # project home page
 
     # see http://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers = [
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
@@ -64,8 +64,6 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python",
         "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.4",
-        "Programming Language :: Python :: 2.5",
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Topic :: Scientific/Engineering",
