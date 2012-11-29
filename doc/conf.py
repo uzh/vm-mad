@@ -13,10 +13,52 @@
 
 import sys, os
 
+# ReadTheDocs.org support
+#
+# Since RTD does not support installing Python extension modules that
+# run native C code (e.g., ARC or MySQL), we need to mock these
+# modules in order to avoid `ImportError` when building the
+# documentation.
+#
+# See:
+#   - http://read-the-docs.readthedocs.org/en/latest/faq.html#i-get-import-errors-on-libraries-that-depend-on-c-modules
+#   - http://read-the-docs.readthedocs.org/en/latest/faq.html#how-do-i-change-behavior-for-read-the-docs
+#
+ON_RTD = (os.environ.get('READTHEDOCS', None) == 'True')
+if ON_RTD:
+    class Mock(object):
+        def __init__(self, *args, **kwargs):
+            pass
+        def __call__(self, *args, **kwargs):
+            return Mock()
+        @classmethod
+        def __getattr__(cls, name):
+            if name in ('__file__', '__path__'):
+                return '/dev/null'
+            elif name[0] == name[0].upper():
+                return type(name, (), {})
+            else:
+                return Mock()
+    MOCK_MODULES = [
+        'cli',
+        'flask',
+        'gc3libs',
+        'gc3libs.application',
+        'gc3libs.application.apppot',
+        'gc3libs.core',
+        'libcloud',
+        'libcloud.compute',
+        'libcloud.compute.providers',
+        'libcloud.compute.types',
+        'texttable',
+        ]
+    for mod_name in MOCK_MODULES:
+        sys.modules[mod_name] = Mock()
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('../vmmad'))
+sys.path.append(os.path.abspath('..'))
 
 # -- General configuration -----------------------------------------------------
 
