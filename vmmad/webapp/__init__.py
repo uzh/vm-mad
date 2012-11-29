@@ -7,7 +7,7 @@ Provides a URL to mark a VM as ready (given VMID and host name) over
 HTTP, plus a status page reporting some basic metrics about the
 orchestrator.
 
-Based on `Django <http://django-project.org>`.
+Based on `Flask <http://flask.pocoo.org/>`.
 """
 # Copyright (C) 2011, 2012 ETH Zurich and University of Zurich. All rights reserved.
 #
