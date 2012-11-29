@@ -48,9 +48,9 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
     def __init__(self, max_vms, max_delta, max_idle, startup_delay,
                  output_file, csv_file, start_time, time_interval, cluster_size):
         # Convert starting time to UNIX time
-        if start_time is not None and isinstance(start_time, types.StringTypes): 
+        if start_time is not None and isinstance(start_time, types.StringTypes):
             start_time = time.mktime(time.strptime(start_time, "%Y-%m-%dT%H:%M:%S" ))
-        
+
         # implement the `Cloud` interface to simulate a cloud provider
         DummyCloud.__init__(self, '1', '1')
 
@@ -64,6 +64,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
             vm_start_timeout=time_interval*max(startup_delay, 10))
 
         # make cluster nodes already available at start
+        self.cluster_size = cluster_size
         for n in xrange(cluster_size):
             # NOTE: use `Orchestrator.new_vm` here, as `self.new_vm` creates a *real VM*
             nodeid = ('clusternode-%d' % n)
@@ -72,21 +73,22 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
                                        state=VmInfo.READY,
                                        nodename=nodeid,
                                        ever_running=True)
+            self.vms[nodeid] = node
 
         # Set simulation settings
         self.max_idle = max_idle
         self.startup_delay = startup_delay
 
-        self.output_file = open(output_file, "wb") 
+        self.output_file = open(output_file, "wb")
         self.writer = csv.writer(self.output_file, delimiter=',')
         self.writer.writerow(
-            ['#TimeStamp'] + ['Pending Jobs'] + ['Running Jobs'] + ['Started VMs'] + ['Idle VMS'])
-           
+            ['#TimeStamp', 'Pending Jobs', 'Running Jobs', 'Started VMs', 'Idle VMS'])
+
         self.time_interval = int(time_interval)
         self._next_row = None
 
         # info about running VMs
-        self._vmid = 0 
+        self._vmid = 0
 
         # no running jobs at the onset
         self._running = 0
@@ -99,7 +101,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
 
     def update_job_status(self):
-        # do regular work       
+        # do regular work
         Orchestrator.update_job_status(self)
 
         # count running jobs
@@ -138,7 +140,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         if len(self.jobs) == 0 and len(self.batchsys.future_jobs) == 0:
             log.info("No more jobs, stopping here")
             self.output_file.close()
-            sys.exit(0)        
+            sys.exit(0)
 
         vms = [ vm for vm in self.vms.values() if not vm.ever_running ]
         vm_count = len(vms)
@@ -148,7 +150,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
         idle_vm_count = len([ vm for vm in vms if vm.last_idle > 0 ])
         self.writer.writerow(
             #  timestamp,  pending jobs,          running jobs,   started VMs,    idle VMs,
-            [self.time(),  len(self.candidates),  self._running,  len(self.vms),  idle_vm_count])
+            [self.time(),  len(self.candidates),  self._running,  len(self.vms)-self.cluster_size,  idle_vm_count])
 
         log.info(
             "At time %d: pending jobs %d, running jobs %d, total started VMs %d,"
@@ -166,7 +168,7 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 
     def new_vm(self, **attrs):
         return Orchestrator.new_vm(self, ever_running=False, last_idle=-self.startup_delay)
-    
+
 
     ##
     ## policy implementation interface
@@ -208,11 +210,11 @@ class OrchestratorSimulation(Orchestrator, DummyCloud):
 if "__main__" == __name__:
     parser = argparse.ArgumentParser(description='Simulates a cloud orchestrator')
     parser.add_argument('--max-vms', '-mv', metavar='N', dest="max_vms", default=10, type=int, help="Maximum number of VMs to be started, default is %(default)s")
-    parser.add_argument('--max-delta', '-md', metavar='N', dest="max_delta", default=1, type=int, help="Cap the number of VMs that can be started or stopped in a single orchestration cycle. Default is %(default)d.")    
+    parser.add_argument('--max-delta', '-md', metavar='N', dest="max_delta", default=1, type=int, help="Cap the number of VMs that can be started or stopped in a single orchestration cycle. Default is %(default)d.")
     parser.add_argument('--max-idle', '-mi', metavar='NUM_SECS', dest="max_idle", default=7200, type=int, help="Maximum idle time (in seconds) before swithing off a VM, default is %(default)s")
     parser.add_argument('--startup-delay', '-s', metavar='NUM_SECS', dest="startup_delay", default=60, type=int, help="Time (in seconds) delay before a started VM is READY. Default is %(default)s")
     parser.add_argument('--csv-file', '-csvf',  metavar='String', dest="csv_file", default="accounting.csv", help="File containing the CSV information, %(default)s")
-    parser.add_argument('--output-file', '-o',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s") 
+    parser.add_argument('--output-file', '-o',  metavar='String', dest="output_file", default="main_sim.txt", help="File name where the output of the simulation will be stored, %(default)s")
     parser.add_argument('--cluster-size', '-cs',  metavar='NUM_CPUS', dest="cluster_size", default="20", type=int, help="Number of VMs, used for the simulation of real available cluster: %(default)s")
     parser.add_argument('--start-time', '-stime',  metavar='String', dest="start_time", default=-1, help="Start time for the simulation, default: %(default)s")
     parser.add_argument('--time-interval', '-timei',  metavar='NUM_SECS', type=int, dest="time_interval", default="3600", help="UNIX interval in seconds used as parsing interval for the jobs in the CSV file, default: %(default)s")
