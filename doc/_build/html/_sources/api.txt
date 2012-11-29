@@ -5,21 +5,59 @@
  VM-MAD modules
 +++++++++++++++++
 
+Orchestrator
+============
 
 `orchestrator`
-==============
-.. automodule:: orchestrator
+--------------
+.. automodule:: vmmad.orchestrator
    :members:
-
 
 `simul`
-=======
-.. automodule:: simul
+-------
+.. automodule:: vmmad.simul
+   :members:
+
+`util`
+------
+.. automodule:: vmmad.util
+   :members:
+
+`webapp`
+--------
+.. automodule:: vmmad.webapp
    :members:
 
 
-`ge_info`
-=========
-.. automodule:: ge_info
+Batch system interfaces
+=======================
+
+`gridengine`
+------------
+.. automodule:: vmmad.batchsys.gridengine
+   :members:
+
+`randomjobs`
+------------
+.. automodule:: vmmad.batchsys.randomjobs
+   :members:
+
+`replay`
+--------
+.. automodule:: vmmad.batchsys.replay
+   :members:
+
+
+Cloud/VM providers
+==================
+
+`gc3pie`
+--------
+.. automodule:: vmmad.provider.gc3pie
+   :members:
+
+`libcloud`
+----------
+.. automodule:: vmmad.provider.libcloud
    :members:
 
