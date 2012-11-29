@@ -42,7 +42,7 @@ import time
 import traceback
 
 # 3rd party imports
-from flask import Blueprint, request, render_template
+from flask import Blueprint, request, render_template, url_for
 
 # local imports
 from vmmad import log
@@ -71,7 +71,9 @@ class OrchestratorWebApp(Blueprint, Orchestrator):
         self._daemon.daemon = True
         self._daemon.start()
 
-        Blueprint.__init__(self, name, __name__, template_folder='templates')
+        Blueprint.__init__(self, name, __name__,
+                           template_folder='templates',
+                           static_folder='ui')
         # register URLs with the Flask Blueprint
         self.route('/')(self.status)
         self.route('/x/ready')(self.ready)
@@ -96,6 +98,7 @@ class OrchestratorWebApp(Blueprint, Orchestrator):
 
     def status(self):
         params = dict(
+            bootstrap_url=url_for('.static', filename='bootstrap'),
             appname=self.__class__.__name__,
             cycles=self.cycle,
             num_started=len(self.vms),
@@ -103,7 +106,7 @@ class OrchestratorWebApp(Blueprint, Orchestrator):
             vms=[ dict(vmid=vm.vmid,
                        state=vm.state,
                        nodename=(vm.nodename if 'nodename' in vm else "(unknown)"),
-                       is_starting=(vm.state == VmInfo.READY),
+                       is_not_yet_ready=(vm.state == VmInfo.STARTING),
                        ready_url=("/x/ready?auth=%s&hostname=vm-%s" % (vm.auth, vm.vmid)),
                     ) for vm in sorted(self.vms.values(), key=(lambda vm: vm.vmid))
                   ],
