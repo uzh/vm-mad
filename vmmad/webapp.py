@@ -42,16 +42,19 @@ import time
 import traceback
 
 # 3rd party imports
-from flask import request, render_template
+from flask import Blueprint, request, render_template
 
 # local imports
 from vmmad import log
 from vmmad.orchestrator import Orchestrator, JobInfo, VmInfo
 
 
-class OrchestratorWebApp(Orchestrator):
+class OrchestratorWebApp(Blueprint, Orchestrator):
 
-    def __init__(self, flaskapp, delay, cloud, batchsys, max_vms, chkptfile=None, **kwargs):
+    def __init__(self,
+                 delay, cloud, batchsys, max_vms, chkptfile=None,
+                 name='vmmad',
+                 **kwargs):
         Orchestrator.__init__(self, cloud, batchsys, max_vms,
                               chkptfile=chkptfile,
                               **kwargs)
@@ -68,10 +71,10 @@ class OrchestratorWebApp(Orchestrator):
         self._daemon.daemon = True
         self._daemon.start()
 
-        self.flaskapp = flaskapp
-        # register methods with the Flask webapp
-        self.flaskapp.route('/')(self.status)
-        self.flaskapp.route('/x/ready')(self.ready)
+        Blueprint.__init__(self, name, __name__, template_folder='templates')
+        # register URLs with the Flask Blueprint
+        self.route('/')(self.status)
+        self.route('/x/ready')(self.ready)
 
 
     def ready(self):

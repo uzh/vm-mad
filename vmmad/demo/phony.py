@@ -34,6 +34,9 @@ import random
 import threading
 import time
 
+# 3rd party modules
+from flask import Flask
+
 # local imports
 from vmmad import log
 from vmmad.batchsys.randomjobs import RandomJobs
@@ -42,13 +45,11 @@ from vmmad.provider.libcloud import DummyCloud, EC2Cloud
 from vmmad.webapp import OrchestratorWebApp
 
 
-
 class DemoOrchestrator(OrchestratorWebApp):
 
-    def __init__(self, flaskapp):
+    def __init__(self):
         OrchestratorWebApp.__init__(
             self,
-            flaskapp,
             delay=15,
             cloud=DummyCloud('1', '1'),
             batchsys=RandomJobs(3, 0.25, timer=self.time),
@@ -74,3 +75,15 @@ class DemoOrchestrator(OrchestratorWebApp):
             return True
         else:
             return False
+
+
+if __name__ == '__main__':
+    # The actual Orchestrator instance.  There should be one and only one
+    # such instance running.
+    demo = DemoOrchestrator()
+
+    # set up the Flask web application
+    app = Flask(__name__)
+    app.debug= True
+    app.register_blueprint(demo)
+    app.run(host='0.0.0.0')

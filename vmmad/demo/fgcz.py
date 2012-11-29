@@ -34,6 +34,9 @@ import random
 import threading
 import time
 
+# 3rd party imports
+from flask import Flask
+
 # local imports
 from vmmad import log
 from vmmad.batchsys.randomjobs import RandomJobs
@@ -42,7 +45,6 @@ from vmmad.orchestrator import JobInfo, VmInfo
 from vmmad.provider.libcloud import DummyCloud, EC2Cloud
 from vmmad.provider.gc3pie import SmscgProvider
 from vmmad.webapp import OrchestratorWebApp
-
 
 
 class DemoOrchestrator(OrchestratorWebApp):
@@ -82,3 +84,15 @@ class DemoOrchestrator(OrchestratorWebApp):
                 "Not stopping VM %s: %d jobs running, %d seconds idle.",
                 vm.nodename, len(vm.jobs), vm.last_idle)
             return False
+
+
+if __name__ == '__main__':
+    # The actual Orchestrator instance.  There should be one and only one
+    # such instance running.
+    demo = DemoOrchestrator()
+
+    # set up the Flask web application
+    app = Flask(__name__)
+    app.debug= True
+    app.register_blueprint(demo)
+    app.run(host='0.0.0.0')
