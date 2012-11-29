@@ -105,7 +105,7 @@ class OrchestratorWebApp(Blueprint, Orchestrator):
                        nodename=(vm.nodename if 'nodename' in vm else "(unknown)"),
                        is_starting=(vm.state == VmInfo.READY),
                        ready_url=("/x/ready?auth=%s&hostname=vm-%s" % (vm.auth, vm.vmid)),
-                    ) for vm in self.vms.values()
+                    ) for vm in sorted(self.vms.values(), key=(lambda vm: vm.vmid))
                   ],
             )
         return render_template('status.html', **params)
