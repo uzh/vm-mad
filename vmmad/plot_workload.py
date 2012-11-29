@@ -34,7 +34,7 @@ import time
 ## main: run tests
 
 if "__main__" == __name__:
-    
+
     ## parse command-line arguments
     parser = argparse.ArgumentParser(
         description="Produce an HTML plot of the data in a workload file.")
@@ -73,9 +73,11 @@ if "__main__" == __name__:
 
     ## main loop: one line per data point
     for row in csv_input:
+        if row[0].startswith('#'):
+            continue
         timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(float(row[0])))
         outfile.write(
-            r' + "' + 
+            r' + "' +
             str.join(',', [
                 timestamp,
                 row[1], # pending
@@ -87,7 +89,7 @@ if "__main__" == __name__:
 
     ## footer
     outfile.write(r'''
-    );
+    { height: 768, width:  1024, });
 </script>
 </body>
 </html>
