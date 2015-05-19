@@ -27,7 +27,7 @@ http://github.com/uzh/vm-mad/
 
 Installation instructions are in the ``INSTALL.txt`` file (in this
 same directory), or read them online at:
-http://github.com/uzh/vm-mad/INSTALL.txt
+https://github.com/uzh/vm-mad/blob/master/doc/install.txt
 
 
 .. References
