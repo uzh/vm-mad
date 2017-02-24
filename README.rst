@@ -23,17 +23,21 @@ Installation instructions and further reading
 =============================================
 
 For up-to-date information, please visit the VM-MAD repository at:
-http://github.com/uzh/vm-mad/
+http://github.com/uzh/vm-mad/ 
+or
+https://arxiv.org/abs/1302.2529
 
 Installation instructions are in the ``INSTALL.txt`` file (in this
 same directory), or read them online at:
 https://github.com/uzh/vm-mad/blob/master/doc/install.txt
 
 
+
+
 .. References
 
 .. _VM-MAD: http://github.com/uzh/vm-mad/
-.. https://arxiv.org/abs/1302.2529
+
 
 
 .. (for Emacs only)
