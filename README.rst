@@ -22,10 +22,10 @@ VM-MAD consists of the following components:
 Installation instructions and further reading
 =============================================
 
+On overview is provided in https://arxiv.org/abs/1302.2529.
 For up-to-date information, please visit the VM-MAD repository at:
 http://github.com/uzh/vm-mad/ 
-or
-https://arxiv.org/abs/1302.2529
+
 
 Installation instructions are in the ``INSTALL.txt`` file (in this
 same directory), or read them online at:
