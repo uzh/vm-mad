@@ -33,6 +33,7 @@ https://github.com/uzh/vm-mad/blob/master/doc/install.txt
 .. References
 
 .. _VM-MAD: http://github.com/uzh/vm-mad/
+.. https://arxiv.org/abs/1302.2529
 
 
 .. (for Emacs only)
