@@ -22,7 +22,6 @@ VM-MAD consists of the following components:
 Installation instructions and further reading
 =============================================
 
-On overview is provided in https://arxiv.org/abs/1302.2529.
 For up-to-date information, please visit the VM-MAD repository at:
 http://github.com/uzh/vm-mad/ 
 
@@ -31,14 +30,14 @@ Installation instructions are in the ``INSTALL.txt`` file (in this
 same directory), or read them online at:
 https://github.com/uzh/vm-mad/blob/master/doc/install.txt
 
-
+A general description of the project is available through https://arxiv.org/abs/1302.2529.
 
 
 .. References
 
 .. _VM-MAD: http://github.com/uzh/vm-mad/
 
-
+.. arXiv: https://arxiv.org/abs/1302.2529
 
 .. (for Emacs only)
 ..
